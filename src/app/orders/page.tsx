@@ -1,0 +1,262 @@
+"use client"
+
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { DataTable, DataTableColumn } from "@/components/crud/data-table"
+import { useOrdersList, useCancelOrder } from "@/hooks/useOrders"
+import { useKundegrupper } from "@/hooks/useKundegruppe"
+import { Order } from "@/types/models"
+import { format } from "date-fns"
+import { Button } from "@/components/ui/button"
+import { Plus, Filter, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+const getOrderStatus = (order: Order) => {
+  if (order.kansellertdato) {
+    return { label: "Kansellert", variant: "destructive" as const }
+  }
+  if (order.ordrelevert) {
+    return { label: "Levert", variant: "default" as const }
+  }
+  if (order.sentbekreftelse) {
+    return { label: "Bekreftet", variant: "secondary" as const }
+  }
+  if (order.ordrestatusid === 1) {
+    return { label: "Ny", variant: "outline" as const }
+  }
+  if (order.ordrestatusid === 2) {
+    return { label: "Under behandling", variant: "secondary" as const }
+  }
+  if (order.ordrestatusid === 3) {
+    return { label: "Godkjent", variant: "default" as const }
+  }
+  return { label: "Ukjent", variant: "outline" as const }
+}
+
+const columns: DataTableColumn<Order>[] = [
+  {
+    key: "ordreid",
+    label: "Ordrenr",
+    sortable: true,
+  },
+  {
+    key: "kundenavn",
+    label: "Kunde",
+    sortable: true,
+  },
+  {
+    key: "kundegruppenavn",
+    label: "Kundegruppe",
+    sortable: false,
+  },
+  {
+    key: "ordredato",
+    label: "Ordredato",
+    sortable: true,
+    render: (value) => value ? format(new Date(value), 'dd.MM.yyyy') : "-"
+  },
+  {
+    key: "leveringsdato",
+    label: "Levering",
+    sortable: true,
+    render: (value) => value ? format(new Date(value), 'dd.MM.yyyy') : "-"
+  },
+  {
+    key: "ordrestatusid",
+    label: "Status",
+    render: (value, item) => {
+      const status = getOrderStatus(item)
+      return <Badge variant={status.variant}>{status.label}</Badge>
+    }
+  },
+  {
+    key: "betalingsmate",
+    label: "Betaling",
+    render: (value) => {
+      switch (value) {
+        case 1: return "Faktura"
+        case 2: return "Kontant"
+        case 3: return "Kort"
+        default: return "-"
+      }
+    }
+  },
+]
+
+export default function OrdersPage() {
+  const router = useRouter()
+  const [params, setParams] = useState({
+    skip: 0,
+    limit: 20,
+    sort_by: 'leveringsdato' as 'leveringsdato' | 'ordredato',
+    sort_order: 'asc' as 'asc' | 'desc',
+    kundegruppe_ids: [] as number[],
+  })
+
+  const { data, isLoading } = useOrdersList(params)
+  const { data: kundegrupper } = useKundegrupper()
+  const cancelMutation = useCancelOrder()
+
+  const handleParamsChange = (newParams: any) => {
+    setParams(prev => ({
+      ...prev,
+      skip: (newParams.page - 1) * prev.limit,
+      limit: newParams.page_size || prev.limit,
+    }))
+  }
+
+  const handleDelete = (id: number) => {
+    // In the order context, "delete" means cancel
+    cancelMutation.mutate(id)
+  }
+
+  const handleKundegruppeToggle = (gruppeid: number) => {
+    setParams(prev => ({
+      ...prev,
+      kundegruppe_ids: prev.kundegruppe_ids.includes(gruppeid)
+        ? prev.kundegruppe_ids.filter(id => id !== gruppeid)
+        : [...prev.kundegruppe_ids, gruppeid],
+      skip: 0, // Reset to first page when filtering
+    }))
+  }
+
+  const handleSortChange = (field: 'leveringsdato' | 'ordredato') => {
+    setParams(prev => ({
+      ...prev,
+      sort_by: field,
+      sort_order: prev.sort_by === field && prev.sort_order === 'asc' ? 'desc' : 'asc',
+      skip: 0,
+    }))
+  }
+
+  const clearFilters = () => {
+    setParams(prev => ({
+      ...prev,
+      kundegruppe_ids: [],
+      skip: 0,
+    }))
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Ordrer</h1>
+          <p className="text-muted-foreground">
+            Administrer bestillinger og leveranser
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/orders/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Ny ordre
+          </Link>
+        </Button>
+      </div>
+
+      {/* Filters and sorting */}
+      <div className="flex gap-4 items-center">
+        {/* Customer group filter */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Filter className="mr-2 h-4 w-4" />
+              Kundegrupper
+              {params.kundegruppe_ids.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {params.kundegruppe_ids.length}
+                </Badge>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium">Filtrer etter kundegruppe</h4>
+                {params.kundegruppe_ids.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Nullstill
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-2">
+                {kundegrupper?.map(gruppe => (
+                  <div key={gruppe.gruppeid} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`gruppe-${gruppe.gruppeid}`}
+                      checked={params.kundegruppe_ids.includes(gruppe.gruppeid)}
+                      onCheckedChange={() => handleKundegruppeToggle(gruppe.gruppeid)}
+                    />
+                    <Label
+                      htmlFor={`gruppe-${gruppe.gruppeid}`}
+                      className="text-sm font-normal cursor-pointer flex-1"
+                    >
+                      {gruppe.gruppe}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Sort controls */}
+        <div className="flex items-center gap-2">
+          <Label className="text-sm">Sorter etter:</Label>
+          <Button
+            variant={params.sort_by === 'leveringsdato' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handleSortChange('leveringsdato')}
+          >
+            Leveringsdato
+            {params.sort_by === 'leveringsdato' && (
+              params.sort_order === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+            )}
+          </Button>
+          <Button
+            variant={params.sort_by === 'ordredato' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handleSortChange('ordredato')}
+          >
+            Ordredato
+            {params.sort_by === 'ordredato' && (
+              params.sort_order === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <DataTable<Order>
+        tableName="orders"
+        columns={columns}
+        data={data?.items || []}
+        total={data?.total || 0}
+        page={data?.page || 1}
+        pageSize={data?.page_size || 20}
+        totalPages={data?.total_pages || 1}
+        onParamsChange={handleParamsChange}
+        onDelete={handleDelete}
+        loading={isLoading}
+        idField="ordreid"
+        searchPlaceholder="Søk etter ordrenr eller kunde..."
+        hideAddButton={true}
+      />
+    </div>
+  )
+}
