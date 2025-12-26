@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { browserPrintService } from '@/lib/browserprint'
+import { browserPrintService, type PrinterStatus } from '@/lib/browserprint'
 import type { ZebraPrinter } from '@/types/labels'
 
 interface UseBrowserPrintReturn {
@@ -12,9 +12,12 @@ interface UseBrowserPrintReturn {
   isLoading: boolean
   isAvailable: boolean
   error: string | null
+  printerStatus: PrinterStatus | null
   refresh: () => Promise<void>
   print: (pdfData: ArrayBuffer) => Promise<void>
   printRaw: (data: string) => Promise<void>
+  printTestLabel: () => Promise<void>
+  refreshPrinterStatus: () => Promise<void>
 }
 
 export function useBrowserPrint(): UseBrowserPrintReturn {
@@ -24,6 +27,7 @@ export function useBrowserPrint(): UseBrowserPrintReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [isAvailable, setIsAvailable] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [printerStatus, setPrinterStatus] = useState<PrinterStatus | null>(null)
 
   const refresh = useCallback(async () => {
     setIsLoading(true)
@@ -85,6 +89,42 @@ export function useBrowserPrint(): UseBrowserPrintReturn {
     [selectedPrinter]
   )
 
+  const printTestLabel = useCallback(async () => {
+    if (!selectedPrinter) {
+      throw new Error('Ingen printer valgt')
+    }
+    await browserPrintService.printTestLabel(selectedPrinter)
+  }, [selectedPrinter])
+
+  const refreshPrinterStatus = useCallback(async () => {
+    if (!selectedPrinter) {
+      setPrinterStatus(null)
+      return
+    }
+    try {
+      const statusResponse = await browserPrintService.getPrinterStatus(selectedPrinter)
+      const status = browserPrintService.parsePrinterStatus(statusResponse)
+      setPrinterStatus(status)
+    } catch {
+      setPrinterStatus({
+        isReady: false,
+        isPaused: false,
+        hasError: true,
+        headOpen: false,
+        ribbonOut: false,
+        mediaOut: false,
+        message: 'Kunne ikke hente status',
+      })
+    }
+  }, [selectedPrinter])
+
+  // Refresh printer status when selected printer changes
+  useEffect(() => {
+    if (selectedPrinter && isAvailable) {
+      refreshPrinterStatus()
+    }
+  }, [selectedPrinter, isAvailable, refreshPrinterStatus])
+
   return {
     printers,
     defaultPrinter,
@@ -93,8 +133,11 @@ export function useBrowserPrint(): UseBrowserPrintReturn {
     isLoading,
     isAvailable,
     error,
+    printerStatus,
     refresh,
     print,
     printRaw,
+    printTestLabel,
+    refreshPrinterStatus,
   }
 }

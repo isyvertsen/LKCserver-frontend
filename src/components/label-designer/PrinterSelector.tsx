@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useBrowserPrint } from '@/hooks/useBrowserPrint'
 import { Label } from '@/components/ui/label'
 import {
@@ -10,14 +11,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, AlertCircle, Printer } from 'lucide-react'
+import { RefreshCw, AlertCircle, Printer, CheckCircle2, XCircle, TestTube2, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { toast } from '@/hooks/use-toast'
 
 interface PrinterSelectorProps {
   className?: string
+  showTestButton?: boolean
 }
 
-export function PrinterSelector({ className }: PrinterSelectorProps) {
+export function PrinterSelector({ className, showTestButton = true }: PrinterSelectorProps) {
   const {
     printers,
     selectedPrinter,
@@ -25,8 +28,31 @@ export function PrinterSelector({ className }: PrinterSelectorProps) {
     isLoading,
     isAvailable,
     error,
+    printerStatus,
     refresh,
+    printTestLabel,
   } = useBrowserPrint()
+
+  const [isTestPrinting, setIsTestPrinting] = useState(false)
+
+  const handleTestPrint = async () => {
+    setIsTestPrinting(true)
+    try {
+      await printTestLabel()
+      toast({
+        title: 'Test-etikett sendt',
+        description: `Sendt til ${selectedPrinter?.name}`,
+      })
+    } catch (err) {
+      toast({
+        title: 'Test-utskrift feilet',
+        description: err instanceof Error ? err.message : 'Ukjent feil',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsTestPrinting(false)
+    }
+  }
 
   if (!isAvailable && !isLoading) {
     return (
@@ -97,6 +123,43 @@ export function PrinterSelector({ className }: PrinterSelectorProps) {
           )}
         </SelectContent>
       </Select>
+
+      {/* Printer Status */}
+      {selectedPrinter && printerStatus && (
+        <div className="mt-2 flex items-center gap-2 text-sm">
+          {printerStatus.isReady ? (
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-600" />
+          )}
+          <span className={printerStatus.isReady ? 'text-green-600' : 'text-red-600'}>
+            {printerStatus.message}
+          </span>
+        </div>
+      )}
+
+      {/* Test Print Button */}
+      {showTestButton && selectedPrinter && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleTestPrint}
+          disabled={isTestPrinting || !printerStatus?.isReady}
+          className="mt-3 w-full"
+        >
+          {isTestPrinting ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Skriver ut...
+            </>
+          ) : (
+            <>
+              <TestTube2 className="h-4 w-4 mr-2" />
+              Test-utskrift
+            </>
+          )}
+        </Button>
+      )}
     </div>
   )
 }
