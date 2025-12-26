@@ -1,34 +1,54 @@
 /**
  * BrowserPrint Service Wrapper
  *
- * Provides integration with Zebra BrowserPrint SDK for printing to ZT510 printers.
+ * Provides integration with Zebra BrowserPrint SDK for printing to Zebra printers.
  * Requires Zebra Browser Print application to be running locally.
+ * Uses official BrowserPrint SDK from /public/lib/BrowserPrint.min.js
  */
 import type { ZebraPrinter } from '@/types/labels'
+
+// BrowserPrint SDK device interface
+interface BrowserPrintDevice {
+  name: string
+  uid: string
+  deviceType: string
+  connection: string
+  version: number
+  provider: string
+  manufacturer: string
+  send: (data: string, success?: () => void, error?: (err: string) => void) => void
+  sendFile: (file: Blob | string, success?: () => void, error?: (err: string) => void) => void
+  read: (success?: (data: string) => void, error?: (err: string) => void) => void
+  sendThenRead: (data: string, success?: (data: string) => void, error?: (err: string) => void) => void
+}
 
 declare global {
   interface Window {
     BrowserPrint: {
       getLocalDevices: (
-        callback: (devices: ZebraPrinter[]) => void,
+        callback: (devices: BrowserPrintDevice[] | Record<string, BrowserPrintDevice[]>) => void,
         errorCallback: (error: string) => void,
         deviceType?: string
       ) => void
       getDefaultDevice: (
         deviceType: string,
-        callback: (device: ZebraPrinter | null) => void,
+        callback: (device: BrowserPrintDevice | null) => void,
+        errorCallback: (error: string) => void
+      ) => void
+      getApplicationConfiguration: (
+        callback: (config: unknown) => void,
         errorCallback: (error: string) => void
       ) => void
     }
   }
 }
 
-const BROWSERPRINT_URL = 'http://127.0.0.1:9100/'
 const SDK_URL = '/lib/BrowserPrint.min.js'
 
 export class BrowserPrintService {
   private initialized = false
   private initPromise: Promise<void> | null = null
+  private devices: Map<string, BrowserPrintDevice> = new Map()
 
   /**
    * Initialize the BrowserPrint SDK by loading it dynamically
@@ -55,12 +75,20 @@ export class BrowserPrintService {
       const script = document.createElement('script')
       script.src = SDK_URL
       script.onload = () => {
-        this.initialized = true
-        resolve()
+        // Wait a bit for BrowserPrint to initialize
+        setTimeout(() => {
+          if (window.BrowserPrint) {
+            this.initialized = true
+            resolve()
+          } else {
+            this.initPromise = null
+            reject(new Error('BrowserPrint SDK lastet, men BrowserPrint objekt ikke tilgjengelig'))
+          }
+        }, 100)
       }
       script.onerror = () => {
         this.initPromise = null
-        reject(new Error('Kunne ikke laste BrowserPrint SDK. Er Zebra Browser Print kjorende?'))
+        reject(new Error('Kunne ikke laste BrowserPrint SDK'))
       }
       document.head.appendChild(script)
     })
@@ -74,9 +102,30 @@ export class BrowserPrintService {
   async isAvailable(): Promise<boolean> {
     try {
       await this.init()
-      return true
+      // Try to get config to verify service is running
+      return new Promise((resolve) => {
+        window.BrowserPrint.getApplicationConfiguration(
+          () => resolve(true),
+          () => resolve(false)
+        )
+      })
     } catch {
       return false
+    }
+  }
+
+  /**
+   * Convert BrowserPrintDevice to ZebraPrinter
+   */
+  private toZebraPrinter(device: BrowserPrintDevice): ZebraPrinter {
+    return {
+      name: device.name,
+      uid: device.uid,
+      deviceType: device.deviceType,
+      connection: device.connection,
+      version: device.version,
+      provider: device.provider,
+      manufacturer: device.manufacturer,
     }
   }
 
@@ -88,7 +137,22 @@ export class BrowserPrintService {
 
     return new Promise((resolve, reject) => {
       window.BrowserPrint.getLocalDevices(
-        (devices) => resolve(devices),
+        (result) => {
+          // Result can be array or object with device types
+          let deviceList: BrowserPrintDevice[]
+          if (Array.isArray(result)) {
+            deviceList = result
+          } else if (result.printer) {
+            deviceList = result.printer
+          } else {
+            deviceList = []
+          }
+
+          // Store devices for later use (don't clear - other calls may have added devices)
+          deviceList.forEach((d) => this.devices.set(d.uid, d))
+
+          resolve(deviceList.map((d) => this.toZebraPrinter(d)))
+        },
         (error) => reject(new Error(error)),
         'printer'
       )
@@ -104,68 +168,81 @@ export class BrowserPrintService {
     return new Promise((resolve, reject) => {
       window.BrowserPrint.getDefaultDevice(
         'printer',
-        (device) => resolve(device),
+        (device) => {
+          if (device) {
+            this.devices.set(device.uid, device)
+            resolve(this.toZebraPrinter(device))
+          } else {
+            resolve(null)
+          }
+        },
         (error) => reject(new Error(error))
       )
     })
   }
 
   /**
-   * Print PDF data to a printer
+   * Get the native BrowserPrint device by UID
+   */
+  private getDevice(printer: ZebraPrinter): BrowserPrintDevice | undefined {
+    return this.devices.get(printer.uid)
+  }
+
+  /**
+   * Print PDF data to a printer using sendFile
    */
   async print(printer: ZebraPrinter, pdfData: ArrayBuffer): Promise<void> {
-    const response = await fetch(`${BROWSERPRINT_URL}write`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/pdf',
-        'X-Printer-UID': printer.uid,
-      },
-      body: pdfData,
-    })
-
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`Utskrift feilet: ${text}`)
+    const device = this.getDevice(printer)
+    if (!device) {
+      throw new Error('Printer ikke funnet. Prøv å oppdatere printerlisten.')
     }
+
+    // Convert ArrayBuffer to Blob
+    const blob = new Blob([pdfData], { type: 'application/pdf' })
+
+    return new Promise((resolve, reject) => {
+      device.sendFile(
+        blob,
+        () => resolve(),
+        (error) => reject(new Error(error || 'Utskrift feilet'))
+      )
+    })
   }
 
   /**
-   * Print raw ZPL data to a printer
+   * Print raw ZPL data to a printer using send
    */
   async printRaw(printer: ZebraPrinter, data: string): Promise<void> {
-    const response = await fetch(`${BROWSERPRINT_URL}write`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain',
-        'X-Printer-UID': printer.uid,
-      },
-      body: data,
-    })
-
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`Utskrift feilet: ${text}`)
+    const device = this.getDevice(printer)
+    if (!device) {
+      throw new Error('Printer ikke funnet. Prøv å oppdatere printerlisten.')
     }
+
+    return new Promise((resolve, reject) => {
+      device.send(
+        data,
+        () => resolve(),
+        (error) => reject(new Error(error || 'Utskrift feilet'))
+      )
+    })
   }
 
   /**
-   * Get printer status
+   * Get printer status using ~HQES command
    */
   async getPrinterStatus(printer: ZebraPrinter): Promise<string> {
-    const response = await fetch(`${BROWSERPRINT_URL}read`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain',
-        'X-Printer-UID': printer.uid,
-      },
-      body: '~HQES',
-    })
-
-    if (!response.ok) {
-      throw new Error('Kunne ikke hente printerstatus')
+    const device = this.getDevice(printer)
+    if (!device) {
+      throw new Error('Printer ikke funnet')
     }
 
-    return response.text()
+    return new Promise((resolve, reject) => {
+      device.sendThenRead(
+        '~HQES',
+        (response) => resolve(response || ''),
+        (error) => reject(new Error(error || 'Kunne ikke hente status'))
+      )
+    })
   }
 
   /**
@@ -225,11 +302,13 @@ export class BrowserPrintService {
    */
   async checkServiceHealth(): Promise<boolean> {
     try {
-      await fetch(BROWSERPRINT_URL, {
-        method: 'GET',
-        mode: 'no-cors',
+      await this.init()
+      return new Promise((resolve) => {
+        window.BrowserPrint.getApplicationConfiguration(
+          () => resolve(true),
+          () => resolve(false)
+        )
       })
-      return true
     } catch {
       return false
     }

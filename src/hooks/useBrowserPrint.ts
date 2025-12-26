@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { browserPrintService, type PrinterStatus } from '@/lib/browserprint'
 import type { ZebraPrinter } from '@/types/labels'
 
+// Check if BrowserPrint is enabled via environment variable
+const isBrowserPrintEnabled = process.env.NEXT_PUBLIC_BROWSERPRINT_ENABLED !== 'false'
+
 interface UseBrowserPrintReturn {
   printers: ZebraPrinter[]
   defaultPrinter: ZebraPrinter | null
@@ -11,6 +14,7 @@ interface UseBrowserPrintReturn {
   setSelectedPrinter: (printer: ZebraPrinter | null) => void
   isLoading: boolean
   isAvailable: boolean
+  isEnabled: boolean
   error: string | null
   printerStatus: PrinterStatus | null
   refresh: () => Promise<void>
@@ -24,12 +28,18 @@ export function useBrowserPrint(): UseBrowserPrintReturn {
   const [printers, setPrinters] = useState<ZebraPrinter[]>([])
   const [defaultPrinter, setDefaultPrinter] = useState<ZebraPrinter | null>(null)
   const [selectedPrinter, setSelectedPrinter] = useState<ZebraPrinter | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(isBrowserPrintEnabled)
   const [isAvailable, setIsAvailable] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [printerStatus, setPrinterStatus] = useState<PrinterStatus | null>(null)
 
   const refresh = useCallback(async () => {
+    // Skip if BrowserPrint is disabled
+    if (!isBrowserPrintEnabled) {
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
@@ -132,6 +142,7 @@ export function useBrowserPrint(): UseBrowserPrintReturn {
     setSelectedPrinter,
     isLoading,
     isAvailable,
+    isEnabled: isBrowserPrintEnabled,
     error,
     printerStatus,
     refresh,
