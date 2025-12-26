@@ -1,4 +1,8 @@
+import packageJson from '../../../../package.json'
+
 export async function GET() {
+  const frontendVersion = packageJson.version
+
   try {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
 
@@ -17,6 +21,7 @@ export async function GET() {
         {
           status: 'error',
           message: 'Backend returnerte feilstatus',
+          frontend_version: frontendVersion,
           checks: {}
         },
         { status: response.status }
@@ -24,7 +29,10 @@ export async function GET() {
     }
 
     const data = await response.json()
-    return Response.json(data)
+    return Response.json({
+      ...data,
+      frontend_version: frontendVersion,
+    })
   } catch (error) {
     console.error('Health check proxy error:', error)
 
@@ -32,6 +40,7 @@ export async function GET() {
       {
         status: 'error',
         message: error instanceof Error ? error.message : 'Kunne ikke nå backend',
+        frontend_version: frontendVersion,
         checks: {}
       },
       { status: 503 }
