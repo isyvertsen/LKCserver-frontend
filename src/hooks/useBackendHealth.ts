@@ -8,6 +8,8 @@ export interface HealthCheckResult {
   status: HealthStatus
   message: string
   lastChecked: Date | null
+  frontendVersion?: string
+  backendVersion?: string
   details?: {
     database?: string
   }
@@ -42,6 +44,8 @@ export function useBackendHealth() {
           status: 'healthy',
           message: 'Backend kjører normalt',
           lastChecked: new Date(),
+          frontendVersion: data.frontend_version,
+          backendVersion: data.version,
           details: data.checks,
         })
       } else if (data.status === 'error') {
