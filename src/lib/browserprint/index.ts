@@ -167,6 +167,83 @@ export class BrowserPrintService {
 
     return response.text()
   }
+
+  /**
+   * Parse printer status response
+   */
+  parsePrinterStatus(statusResponse: string): PrinterStatus {
+    const defaultStatus: PrinterStatus = {
+      isReady: true,
+      isPaused: false,
+      hasError: false,
+      headOpen: false,
+      ribbonOut: false,
+      mediaOut: false,
+      message: 'Klar',
+    }
+
+    if (!statusResponse || statusResponse.length < 3) {
+      return { ...defaultStatus, message: 'Ukjent status' }
+    }
+
+    const status = statusResponse.toLowerCase()
+
+    if (status.includes('error') || status.includes('feil')) {
+      return { ...defaultStatus, isReady: false, hasError: true, message: 'Printerfeil' }
+    }
+    if (status.includes('pause')) {
+      return { ...defaultStatus, isPaused: true, message: 'Printer pauset' }
+    }
+    if (status.includes('head') || status.includes('open')) {
+      return { ...defaultStatus, isReady: false, headOpen: true, message: 'Printerhode åpent' }
+    }
+    if (status.includes('ribbon')) {
+      return { ...defaultStatus, isReady: false, ribbonOut: true, message: 'Ribbon tom' }
+    }
+    if (status.includes('media') || status.includes('paper')) {
+      return { ...defaultStatus, isReady: false, mediaOut: true, message: 'Media tom' }
+    }
+
+    return defaultStatus
+  }
+
+  /**
+   * Print a test label (ZPL)
+   */
+  async printTestLabel(printer: ZebraPrinter): Promise<void> {
+    const testZpl = `^XA
+^FO50,50^A0N,50,50^FDTest Label^FS
+^FO50,120^A0N,30,30^FDPrinter: ${printer.name}^FS
+^FO50,160^A0N,30,30^FD${new Date().toLocaleString('nb-NO')}^FS
+^FO50,220^BY3^BCN,100,Y,N,N^FD123456789^FS
+^XZ`
+    await this.printRaw(printer, testZpl)
+  }
+
+  /**
+   * Check if BrowserPrint service is reachable
+   */
+  async checkServiceHealth(): Promise<boolean> {
+    try {
+      await fetch(BROWSERPRINT_URL, {
+        method: 'GET',
+        mode: 'no-cors',
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
+export interface PrinterStatus {
+  isReady: boolean
+  isPaused: boolean
+  hasError: boolean
+  headOpen: boolean
+  ribbonOut: boolean
+  mediaOut: boolean
+  message: string
 }
 
 // Singleton instance
