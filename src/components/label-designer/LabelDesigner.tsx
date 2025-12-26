@@ -475,10 +475,33 @@ export function LabelDesigner({
 
         <div className="flex-1" />
 
-        {/* Printer selector */}
-        <div className="w-48">
-          <PrinterSelector showTestButton={false} />
-        </div>
+        {/* Printer selector - only show if BrowserPrint is enabled */}
+        {process.env.NEXT_PUBLIC_BROWSERPRINT_ENABLED !== 'false' && (
+          <>
+            <div className="w-48">
+              <PrinterSelector showTestButton={false} />
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={handlePrint}
+              disabled={isPrinting || !isAvailable || !selectedPrinter}
+              title="Skriv ut til Zebra-printer"
+            >
+              {isPrinting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Skriver ut...
+                </>
+              ) : (
+                <>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Skriv ut
+                </>
+              )}
+            </Button>
+          </>
+        )}
 
         <Button
           variant="outline"
@@ -488,25 +511,6 @@ export function LabelDesigner({
         >
           <Eye className="h-4 w-4 mr-2" />
           {isGeneratingPreview ? 'Genererer...' : 'Forhåndsvis'}
-        </Button>
-
-        <Button
-          variant="outline"
-          onClick={handlePrint}
-          disabled={isPrinting || !isAvailable || !selectedPrinter}
-          title="Skriv ut til Zebra-printer"
-        >
-          {isPrinting ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Skriver ut...
-            </>
-          ) : (
-            <>
-              <Printer className="h-4 w-4 mr-2" />
-              Skriv ut
-            </>
-          )}
         </Button>
 
         <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
