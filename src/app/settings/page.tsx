@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { 
+import {
   Settings,
   Building,
   Users,
@@ -19,12 +19,15 @@ import {
   Database,
   Printer,
   Globe,
-  Save
+  Save,
+  Info
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useBackendHealth } from "@/hooks/useBackendHealth"
 
 export default function SettingsPage() {
   const { toast } = useToast()
+  const { health } = useBackendHealth()
   const [companySettings, setCompanySettings] = useState({
     name: "Larvik Kommune Catering",
     orgNumber: "123456789",
@@ -425,6 +428,32 @@ export default function SettingsPage() {
                   <p className="text-sm text-gray-500">Skriv ut ordrer automatisk ved mottak</p>
                 </div>
                 <Switch />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5" />
+                Versjonsinformasjon
+              </CardTitle>
+              <CardDescription>
+                Informasjon om systemversjoner
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-gray-500">Frontend versjon</Label>
+                  <p className="text-lg font-medium">{health.frontendVersion || 'Laster...'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-gray-500">Backend status</Label>
+                  <p className="text-lg font-medium">
+                    {health.status === 'healthy' ? 'Tilkoblet' : health.status === 'checking' ? 'Sjekker...' : 'Frakoblet'}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
