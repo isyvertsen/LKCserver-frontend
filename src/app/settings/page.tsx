@@ -443,10 +443,14 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <Label className="text-gray-500">Frontend versjon</Label>
                   <p className="text-lg font-medium">{health.frontendVersion || 'Laster...'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-gray-500">Backend versjon</Label>
+                  <p className="text-lg font-medium">{health.backendVersion || 'Laster...'}</p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-gray-500">Backend status</Label>
