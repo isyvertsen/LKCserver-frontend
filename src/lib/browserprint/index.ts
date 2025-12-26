@@ -148,8 +148,7 @@ export class BrowserPrintService {
             deviceList = []
           }
 
-          // Store devices for later use
-          this.devices.clear()
+          // Store devices for later use (don't clear - other calls may have added devices)
           deviceList.forEach((d) => this.devices.set(d.uid, d))
 
           resolve(deviceList.map((d) => this.toZebraPrinter(d)))
