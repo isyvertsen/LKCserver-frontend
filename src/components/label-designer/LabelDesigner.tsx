@@ -326,8 +326,8 @@ export function LabelDesigner({
       const template = designerRef.current.getTemplate()
       const sampleData = generateSampleData(template)
 
-      // Generate PDF via backend
-      const response = await fetch('/api/v1/labels/generate', {
+      // Generate PDF via backend preview endpoint (returns base64 PDF)
+      const response = await fetch('/api/v1/labels/preview', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -337,7 +337,6 @@ export function LabelDesigner({
           inputs: sampleData,
           width_mm: size.width,
           height_mm: size.height,
-          copies: 1,
         }),
       })
 
@@ -346,10 +345,16 @@ export function LabelDesigner({
         throw new Error(error.detail || 'Feil ved generering av PDF')
       }
 
-      // Get PDF as ArrayBuffer and send to printer
-      const pdfBlob = await response.blob()
-      const arrayBuffer = await pdfBlob.arrayBuffer()
-      await print(arrayBuffer)
+      const result = await response.json()
+
+      // Convert base64 PDF to ArrayBuffer
+      const binaryString = atob(result.preview)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+
+      await print(bytes.buffer)
 
       toast({
         title: 'Utskrift sendt',

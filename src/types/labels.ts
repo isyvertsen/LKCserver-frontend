@@ -202,6 +202,7 @@ export interface ZebraPrinter {
   deviceType: string;
   version: number;
   provider: string;
+  manufacturer: string;
 }
 
 // Component Props
