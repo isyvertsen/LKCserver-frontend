@@ -21,12 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Save, Undo, Redo, PanelLeftClose, PanelLeft, Eye } from 'lucide-react'
+import { Save, Undo, Redo, PanelLeftClose, PanelLeft, Eye, Printer, Loader2 } from 'lucide-react'
 import type { LabelDesignerProps } from '@/types/labels'
 import { LABEL_SIZE_PRESETS } from '@/types/labels'
 import { VariablesSidebar } from './VariablesSidebar'
 import { LABEL_VARIABLES, type LabelVariable } from '@/config/label-variables'
 import { createCustomRectangle, createCustomLine } from './custom-schemas'
+import { useBrowserPrint } from '@/hooks/useBrowserPrint'
+import { PrinterSelector } from './PrinterSelector'
+import { toast } from '@/hooks/use-toast'
 
 /**
  * Create a basePdf object with custom dimensions (in mm)
@@ -65,6 +68,9 @@ export function LabelDesigner({
   })
   const [textFields, setTextFields] = useState<{ name: string; content: string }[]>([])
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
+
+  const { selectedPrinter, print, isAvailable } = useBrowserPrint()
 
   // Extract text fields from template for preview
   const extractTextFields = useCallback((template: any) => {
@@ -302,6 +308,70 @@ export function LabelDesigner({
     }
   }, [generateSampleData, size])
 
+  // Handle print to BrowserPrint
+  const handlePrint = useCallback(async () => {
+    if (!designerRef.current) return
+
+    if (!selectedPrinter) {
+      toast({
+        title: 'Ingen printer valgt',
+        description: 'Velg en printer før du skriver ut',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsPrinting(true)
+    try {
+      const template = designerRef.current.getTemplate()
+      const sampleData = generateSampleData(template)
+
+      // Generate PDF via backend preview endpoint (returns base64 PDF)
+      const response = await fetch('/api/v1/labels/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template_json: template,
+          inputs: sampleData,
+          width_mm: size.width,
+          height_mm: size.height,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || 'Feil ved generering av PDF')
+      }
+
+      const result = await response.json()
+
+      // Convert base64 PDF to ArrayBuffer
+      const binaryString = atob(result.preview)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+
+      await print(bytes.buffer)
+
+      toast({
+        title: 'Utskrift sendt',
+        description: `Etikett sendt til ${selectedPrinter.name}`,
+      })
+    } catch (error) {
+      console.error('Failed to print:', error)
+      toast({
+        title: 'Utskrift feilet',
+        description: error instanceof Error ? error.message : 'Kunne ikke skrive ut',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrinting(false)
+    }
+  }, [selectedPrinter, print, generateSampleData, size])
+
   // Add variable as text field to the canvas
   const handleVariableClick = useCallback((variable: LabelVariable) => {
     if (!designerRef.current) return
@@ -405,6 +475,11 @@ export function LabelDesigner({
 
         <div className="flex-1" />
 
+        {/* Printer selector */}
+        <div className="w-48">
+          <PrinterSelector showTestButton={false} />
+        </div>
+
         <Button
           variant="outline"
           onClick={handlePreview}
@@ -413,6 +488,25 @@ export function LabelDesigner({
         >
           <Eye className="h-4 w-4 mr-2" />
           {isGeneratingPreview ? 'Genererer...' : 'Forhåndsvis'}
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={handlePrint}
+          disabled={isPrinting || !isAvailable || !selectedPrinter}
+          title="Skriv ut til Zebra-printer"
+        >
+          {isPrinting ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Skriver ut...
+            </>
+          ) : (
+            <>
+              <Printer className="h-4 w-4 mr-2" />
+              Skriv ut
+            </>
+          )}
         </Button>
 
         <Button onClick={handleSave} disabled={isSaving || !name.trim()}>

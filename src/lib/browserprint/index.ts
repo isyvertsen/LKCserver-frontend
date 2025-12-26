@@ -23,8 +23,8 @@ declare global {
   }
 }
 
-const BROWSERPRINT_URL = 'http://localhost:9100/'
-const SDK_URL = `${BROWSERPRINT_URL}BrowserPrint.js`
+const BROWSERPRINT_URL = 'http://127.0.0.1:9100/'
+const SDK_URL = '/lib/BrowserPrint.min.js'
 
 export class BrowserPrintService {
   private initialized = false
