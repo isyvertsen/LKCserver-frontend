@@ -21,12 +21,14 @@ import {
   Barcode,
   ChevronLeft,
   ChevronRight,
-  Tag
+  Tag,
+  MessageSquare
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { signOut, useSession } from "next-auth/react"
 import { User } from "lucide-react"
+import { ReportIssueDialog } from "@/components/feedback/ReportIssueDialog"
 
 const navigationGroups = [
   {
@@ -69,6 +71,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const { data: session } = useSession()
 
   // Toggle collapsed state (localStorage removed to avoid SSR issues)
@@ -193,6 +196,23 @@ export function Sidebar() {
               </div>
             )}
 
+            {/* Feedback button */}
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                collapsed ? "justify-center px-0" : "justify-start"
+              )}
+              onClick={() => setFeedbackOpen(true)}
+              title={collapsed ? "Rapporter problem" : undefined}
+            >
+              <MessageSquare className={cn(
+                "h-5 w-5 text-gray-400",
+                !collapsed && "mr-3"
+              )} />
+              {!collapsed && "Rapporter problem"}
+            </Button>
+
             {/* Logout button */}
             <Button
               variant="ghost"
@@ -220,6 +240,9 @@ export function Sidebar() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Feedback Dialog */}
+      <ReportIssueDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </>
   )
 }
