@@ -12,6 +12,7 @@ export interface CombinedDishProductComponent {
 
 export interface CombinedDishCreate {
   name: string
+  preparation_instructions?: string
   recipes: CombinedDishRecipeComponent[]
   products: CombinedDishProductComponent[]
 }
@@ -34,6 +35,7 @@ export interface CombinedDishProductComponentResponse {
 export interface CombinedDish {
   id: number
   name: string
+  preparation_instructions?: string | null
   created_at: string
   updated_at: string
   created_by_user_id?: number | null
