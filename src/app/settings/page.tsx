@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Link from "next/link"
 import {
   Settings,
   Building,
@@ -20,6 +21,7 @@ import {
   Printer,
   Globe,
   Save,
+  ChevronRight,
   Info
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -401,25 +403,26 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Printer className="h-5 w-5" />
-                Utskriftsinnstillinger
+                Zebra Printer Innstillinger
               </CardTitle>
               <CardDescription>
-                Konfigurer standard utskriftsformat
+                Administrer dine Zebra-printere for etikett-utskrift
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="default-printer">Standard skriver</Label>
-                <Select defaultValue="network-printer">
-                  <SelectTrigger id="default-printer">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="network-printer">Nettverksskriver - Kontor</SelectItem>
-                    <SelectItem value="kitchen-printer">Kjøkkenskriver</SelectItem>
-                    <SelectItem value="pdf">Skriv til PDF</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors">
+                <div>
+                  <p className="font-medium">Administrer Zebra-printere</p>
+                  <p className="text-sm text-muted-foreground">
+                    Legg til, rediger og test dine Zebra-printere for etikett-utskrift
+                  </p>
+                </div>
+                <Link href="/settings/printers">
+                  <Button variant="ghost" size="sm">
+                    Åpne
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
               </div>
 
               <div className="flex items-center justify-between">

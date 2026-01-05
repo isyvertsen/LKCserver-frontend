@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Plus, Trash2, Calculator, Printer, Sparkles, Save, Search, FolderOpen, FilePlus } from "lucide-react"
+import { Plus, Trash2, Calculator, Printer, Sparkles, Save, Search, FolderOpen, FilePlus, Settings } from "lucide-react"
 import { toast } from "sonner"
 import { useRecipesList } from "@/hooks/useRecipes"
 import { useProducts } from "@/hooks/useProducts"
@@ -50,7 +51,11 @@ function CreateDishPageContent() {
   const [nutritionData, setNutritionData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [printLoading, setPrintLoading] = useState(false)
+  const [printZplLoading, setPrintZplLoading] = useState(false)
+  const [printDirectLoading, setPrintDirectLoading] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
+  const [selectedPrinterId, setSelectedPrinterId] = useState<string>("")
+  const [availablePrinters, setAvailablePrinters] = useState<Array<{id: string, name: string, ipAddress: string, isDefault: boolean}>>([])
   const [nameGenerating, setNameGenerating] = useState(false)
   const [autoGenerateName, setAutoGenerateName] = useState(true)
   const [manuallyEdited, setManuallyEdited] = useState(false)
@@ -114,6 +119,31 @@ function CreateDishPageContent() {
       toast.success(`Lastet inn rett: ${existingDish.name}`)
     }
   }, [existingDish, recipes.length, products.length])
+
+  // Load printers from localStorage (client-side only)
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return
+
+    try {
+      const savedPrinters = window.localStorage.getItem('zebraPrinters')
+      if (savedPrinters) {
+        const printers = JSON.parse(savedPrinters)
+        setAvailablePrinters(printers)
+
+        // Set default printer as selected
+        const defaultPrinter = printers.find((p: any) => p.isDefault)
+        if (defaultPrinter) {
+          setSelectedPrinterId(defaultPrinter.id)
+        } else if (printers.length > 0) {
+          // If no default, select first printer
+          setSelectedPrinterId(printers[0].id)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load printers:', e)
+    }
+  }, [])
 
   const handleAddRecipe = () => {
     if (!selectedRecipeId || !recipeAmount) {
@@ -260,6 +290,155 @@ function CreateDishPageContent() {
       toast.error(`Kunne ikke generere etikett: ${errorMessage}`)
     } finally {
       setPrintLoading(false)
+    }
+  }
+
+  const printZplLabel = async () => {
+    if (!dishName.trim()) {
+      toast.error("Angi navn på retten først")
+      return
+    }
+
+    if (recipeComponents.length === 0 && productComponents.length === 0) {
+      toast.error("Legg til minst én oppskrift eller produkt")
+      return
+    }
+
+    setPrintZplLoading(true)
+    try {
+      const requestData = {
+        name: dishName,
+        preparation_instructions: preparationInstructions === "none" ? undefined : preparationInstructions,
+        recipes: recipeComponents.map((c) => ({
+          kalkylekode: c.kalkylekode,
+          amount_grams: c.amount_grams,
+        })),
+        products: productComponents.map((p) => ({
+          produktid: p.produktid,
+          amount_grams: p.amount_grams,
+        })),
+      }
+
+      console.log("Generating ZPL label with data:", requestData)
+
+      const response = await apiClient.post("/v1/oppskrifter/kombinere/label-zpl", requestData, {
+        responseType: 'blob'
+      })
+
+      console.log("ZPL blob received, size:", response.data.size)
+      const blob = response.data
+
+      // Create filename with date and time
+      const now = new Date()
+      const dateStr = now.toISOString().slice(0, 10) // YYYY-MM-DD
+      const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '-') // HH-MM-SS
+      const sanitizedDishName = dishName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9æøåÆØÅ_-]/g, '')
+      const filename = `etikett_zpl_${sanitizedDishName}_${dateStr}_${timeStr}.zpl`
+
+      // Create a download link
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+
+      // Cleanup
+      window.URL.revokeObjectURL(downloadUrl)
+      document.body.removeChild(a)
+
+      toast.success("ZPL etikett generert!")
+    } catch (error: any) {
+      console.error("Feil ved generering av ZPL etikett:", error)
+      const errorMessage = error?.message || "Ukjent feil"
+      toast.error(`Kunne ikke generere ZPL etikett: ${errorMessage}`)
+    } finally {
+      setPrintZplLoading(false)
+    }
+  }
+
+  const printDirectToZebra = async () => {
+    if (!dishName.trim()) {
+      toast.error("Angi navn på retten først")
+      return
+    }
+
+    if (recipeComponents.length === 0 && productComponents.length === 0) {
+      toast.error("Legg til minst én oppskrift eller produkt")
+      return
+    }
+
+    if (!selectedPrinterId) {
+      toast.error("Velg en printer først")
+      return
+    }
+
+    const selectedPrinter = availablePrinters.find(p => p.id === selectedPrinterId)
+    if (!selectedPrinter) {
+      toast.error("Finner ikke valgt printer")
+      return
+    }
+
+    setPrintDirectLoading(true)
+    try {
+      const requestData = {
+        name: dishName,
+        preparation_instructions: preparationInstructions === "none" ? undefined : preparationInstructions,
+        recipes: recipeComponents.map((c) => ({
+          kalkylekode: c.kalkylekode,
+          amount_grams: c.amount_grams,
+        })),
+        products: productComponents.map((p) => ({
+          produktid: p.produktid,
+          amount_grams: p.amount_grams,
+        })),
+      }
+
+      console.log("Generating ZPL for direct print with data:", requestData)
+
+      // Get ZPL code from backend
+      const response = await apiClient.post("/v1/oppskrifter/kombinere/label-zpl", requestData, {
+        responseType: 'blob'
+      })
+
+      console.log("ZPL blob received, converting to text...")
+      const blob = response.data
+      const zplCode = await blob.text()
+
+      console.log("Sending ZPL to printer:", selectedPrinter.name, "at", selectedPrinter.ipAddress)
+
+      // Send ZPL directly to Zebra printer via HTTP
+      // Zebra printers accept ZPL on /pstprnt endpoint
+      const printerUrl = `http://${selectedPrinter.ipAddress}/pstprnt`
+
+      const printResponse = await fetch(printerUrl, {
+        method: 'POST',
+        body: zplCode,
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+        mode: 'no-cors' // Required for cross-origin requests to printer
+      })
+
+      // Note: no-cors mode means we can't read the response
+      // We assume success if no error is thrown
+      console.log("Print request sent successfully")
+      toast.success(`Etikett sendt til ${selectedPrinter.name}!`)
+
+    } catch (error: any) {
+      console.error("Feil ved utskrift til Zebra printer:", error)
+
+      let errorMessage = "Kunne ikke skrive ut til printer"
+
+      if (error.message?.includes('fetch')) {
+        errorMessage = `Kunne ikke koble til ${selectedPrinter.name} på ${selectedPrinter.ipAddress}. Sjekk at printeren er tilgjengelig på nettverket.`
+      } else {
+        errorMessage = `Kunne ikke skrive ut: ${error?.message || "Ukjent feil"}`
+      }
+
+      toast.error(errorMessage)
+    } finally {
+      setPrintDirectLoading(false)
     }
   }
 
@@ -891,10 +1070,10 @@ function CreateDishPageContent() {
                 <CardHeader>
                   <CardTitle>Skriv ut etikett</CardTitle>
                   <CardDescription>
-                    Generer PDF etikett med ingredienser, næringsverdier og allergener
+                    Generer PDF etikett, last ned ZPL eller skriv ut direkte til Zebra-printer
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                   <Button
                     onClick={printLabel}
                     disabled={printLoading}
@@ -902,8 +1081,84 @@ function CreateDishPageContent() {
                     size="lg"
                   >
                     <Printer className="mr-2 h-4 w-4" />
-                    {printLoading ? "Genererer etikett..." : "Skriv ut etikett"}
+                    {printLoading ? "Genererer PDF..." : "Skriv ut PDF etikett"}
                   </Button>
+
+                  <Button
+                    onClick={printZplLabel}
+                    disabled={printZplLoading}
+                    className="w-full"
+                    size="lg"
+                    variant="outline"
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    {printZplLoading ? "Genererer ZPL..." : "Last ned ZPL-fil"}
+                  </Button>
+
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="printer-select" className="text-sm font-medium">
+                        Velg Zebra Printer
+                      </Label>
+                      <Link href="/settings/printers">
+                        <Button variant="ghost" size="sm">
+                          <Settings className="mr-2 h-4 w-4" />
+                          Administrer
+                        </Button>
+                      </Link>
+                    </div>
+
+                    {availablePrinters.length > 0 ? (
+                      <>
+                        <Select value={selectedPrinterId} onValueChange={setSelectedPrinterId}>
+                          <SelectTrigger id="printer-select">
+                            <SelectValue placeholder="Velg printer..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availablePrinters.map((printer) => (
+                              <SelectItem key={printer.id} value={printer.id}>
+                                <div className="flex items-center gap-2">
+                                  <span>{printer.name}</span>
+                                  {printer.isDefault && (
+                                    <span className="text-xs text-muted-foreground">(Standard)</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {selectedPrinterId && (
+                          <p className="text-xs text-muted-foreground">
+                            IP: {availablePrinters.find(p => p.id === selectedPrinterId)?.ipAddress}
+                          </p>
+                        )}
+
+                        <Button
+                          onClick={printDirectToZebra}
+                          disabled={printDirectLoading || !selectedPrinterId}
+                          className="w-full"
+                          size="lg"
+                          variant="default"
+                        >
+                          <Printer className="mr-2 h-4 w-4" />
+                          {printDirectLoading ? "Skriver ut..." : "Skriv ut direkte til Zebra"}
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Ingen printere konfigurert
+                        </p>
+                        <Link href="/settings/printers">
+                          <Button variant="outline" className="w-full" size="sm">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Legg til printer
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </>

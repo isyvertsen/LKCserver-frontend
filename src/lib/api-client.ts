@@ -13,6 +13,11 @@ export const apiClient = axios.create({
 // Request interceptor to add auth token if available
 apiClient.interceptors.request.use(
   async (config) => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      return config
+    }
+
     // Get the session and add the access token to the request
     const session = await getSession()
 
