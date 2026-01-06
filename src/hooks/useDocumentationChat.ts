@@ -6,7 +6,7 @@ import type { ChatMessage, ChatResponse, ChatState } from '@/types/chat'
 
 const WELCOME_MESSAGE: ChatMessage = {
   role: 'assistant',
-  content: 'Hei! Jeg er dokumentasjonsassistenten for LKC-systemet. Still meg gjerne spørsmål om hvordan systemet fungerer, API-er, eller andre tekniske detaljer.',
+  content: 'Hei! Jeg kan hjelpe deg med å bruke LKC-systemet. Spør meg gjerne om hvordan du oppretter oppskrifter, håndterer kunder og ordrer, lager etiketter, eller andre ting du lurer på.',
   timestamp: new Date()
 }
 
