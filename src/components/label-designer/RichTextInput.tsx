@@ -151,7 +151,7 @@ export function RichTextInput({
 
       {/* Preview */}
       {showPreview && value && (
-        <div className="p-3 border rounded-md bg-white">
+        <div className="p-3 border rounded-md bg-card">
           <div className="text-xs text-muted-foreground mb-1">Forhåndsvisning:</div>
           <RichTextPreview text={value} className="text-sm" />
         </div>

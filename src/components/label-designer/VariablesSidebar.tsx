@@ -191,7 +191,7 @@ export function VariablesSidebar({
                         Viser hvordan &lt;b&gt; tags vil se ut:
                       </p>
                       {textFields.map((field) => (
-                        <div key={field.name} className="p-2 bg-white rounded border text-sm">
+                        <div key={field.name} className="p-2 bg-card rounded border text-sm">
                           <div className="text-xs text-muted-foreground mb-1 font-mono">
                             {field.name}:
                           </div>
