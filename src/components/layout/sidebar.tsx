@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Tag,
-  MessageSquare
+  MessageSquare,
+  BookOpen
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -61,6 +62,7 @@ const navigationGroups = [
     items: [
       { name: "Ansatte", href: "/employees", icon: UserCheck },
       { name: "Brukere", href: "/admin/users", icon: UserCheck },
+      { name: "Dokumentasjon", href: "/admin/documentation", icon: BookOpen },
       { name: "Rapporter", href: "/reports", icon: BarChart3 },
       { name: "Innstillinger", href: "/settings", icon: Settings },
     ]
