@@ -70,11 +70,12 @@ export function MarkdownViewer({ content }: MarkdownViewerProps) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
-          code({ node, inline, className, children, ...props }) {
+          code({ className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '')
             const language = match ? match[1] : ''
 
-            if (!inline && language === 'mermaid') {
+            // Handle mermaid code blocks
+            if (language === 'mermaid') {
               return (
                 <code className={className} {...props}>
                   {children}
