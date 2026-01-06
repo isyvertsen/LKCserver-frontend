@@ -130,7 +130,7 @@ export function ImageUpload() {
             {images.map((image) => (
               <div
                 key={image.id}
-                className="border border-gray-200 rounded-lg p-4 flex items-start gap-4 bg-white"
+                className="border rounded-lg p-4 flex items-start gap-4 bg-card"
               >
                 <img
                   src={image.url}

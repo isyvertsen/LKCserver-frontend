@@ -65,8 +65,8 @@ export default function DeliveriesPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Leveranser</h1>
-          <p className="text-gray-500 mt-2">Administrer og spor dagens leveranser</p>
+          <h1 className="text-3xl font-bold">Leveranser</h1>
+          <p className="text-muted-foreground mt-2">Administrer og spor dagens leveranser</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline">
@@ -89,7 +89,7 @@ export default function DeliveriesPage() {
           className="w-48"
         />
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Søk etter kunde, adresse eller sjåfør..."
             value={searchTerm}
@@ -103,38 +103,38 @@ export default function DeliveriesPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Totale leveranser</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Totale leveranser</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-gray-500 mt-1">8 ruter aktive</p>
+            <p className="text-xs text-muted-foreground mt-1">8 ruter aktive</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Levert</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Levert</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">12</div>
-            <p className="text-xs text-gray-500 mt-1">50% fullført</p>
+            <p className="text-xs text-muted-foreground mt-1">50% fullført</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Under levering</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Under levering</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">8</div>
-            <p className="text-xs text-gray-500 mt-1">4 ruter aktive</p>
+            <p className="text-xs text-muted-foreground mt-1">4 ruter aktive</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Forsinket</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Forsinket</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">2</div>
-            <p className="text-xs text-gray-500 mt-1">Trenger oppfølging</p>
+            <p className="text-xs text-muted-foreground mt-1">Trenger oppfølging</p>
           </CardContent>
         </Card>
       </div>
@@ -150,10 +150,10 @@ export default function DeliveriesPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <StatusIcon className="h-5 w-5 text-gray-600" />
+                    <StatusIcon className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <h3 className="font-semibold">{delivery.route}</h3>
-                      <p className="text-sm text-gray-600">Sjåfør: {delivery.driver}</p>
+                      <p className="text-sm text-muted-foreground">Sjåfør: {delivery.driver}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -161,7 +161,7 @@ export default function DeliveriesPage() {
                       <p className="text-sm font-medium">
                         {delivery.completedStops} av {delivery.totalStops} stopp
                       </p>
-                      <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
+                      <div className="w-32 h-2 bg-muted rounded-full mt-1">
                         <div 
                           className="h-full bg-blue-600 rounded-full"
                           style={{ width: `${(delivery.completedStops / delivery.totalStops) * 100}%` }}
@@ -175,21 +175,21 @@ export default function DeliveriesPage() {
               <CardContent>
                 <div className="space-y-3">
                   {delivery.orders.map((order, index) => (
-                    <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={order.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-sm font-medium">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-card text-sm font-medium">
                           {index + 1}
                         </div>
                         <div>
                           <p className="font-medium">{order.customer}</p>
-                          <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3" />
                             {order.address}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-600">{order.items} varer</span>
+                        <span className="text-sm text-muted-foreground">{order.items} varer</span>
                         {order.status === 'delivered' ? (
                           <Badge variant="secondary" className="bg-green-100 text-green-800">
                             <CheckCircle className="h-3 w-3 mr-1" />

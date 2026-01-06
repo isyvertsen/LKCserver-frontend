@@ -74,7 +74,7 @@ export function TopNavigation() {
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="bg-background shadow-sm border-b">
       <div className="container mx-auto px-4">
         <div className="flex h-16 justify-between">
           <div className="flex">
