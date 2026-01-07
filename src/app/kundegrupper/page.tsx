@@ -120,12 +120,12 @@ export default function KundegrupperPage() {
     setDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id)
+  const handleDelete = (id: number | string) => {
+    deleteMutation.mutate(Number(id))
   }
 
-  const handleBulkDelete = (ids: number[]) => {
-    bulkDeleteMutation.mutate(ids)
+  const handleBulkDelete = (ids: (number | string)[]) => {
+    bulkDeleteMutation.mutate(ids.map(Number))
   }
 
   const handleSubmit = (e: React.FormEvent) => {

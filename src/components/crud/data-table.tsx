@@ -71,8 +71,8 @@ interface DataTableProps<T extends CrudItem> {
   pageSize: number
   totalPages: number
   onParamsChange: (params: CrudListParams) => void
-  onDelete: (id: number) => void
-  onBulkDelete?: (ids: number[]) => void
+  onDelete: (id: number | string) => void
+  onBulkDelete?: (ids: (number | string)[]) => void
   loading?: boolean
   customActions?: (item: T) => React.ReactNode
   idField?: string
@@ -116,8 +116,8 @@ export function DataTable<T extends CrudItem>({
   const [search, setSearch] = useState("")
   const [sortBy, setSortBy] = useState<string | undefined>()
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [deleteId, setDeleteId] = useState<number | string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set())
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false)
 
   const handleSearch = (value: string) => {

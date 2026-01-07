@@ -1,379 +1,294 @@
 "use client"
 
-import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { apiClient } from "@/lib/api-client"
+import { useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import {
+  useMatinfoProducts,
+  useDeleteMatinfoProduct,
+  useSyncProducts,
+  useUpdatedGtins,
+  useNewProducts,
+} from "@/hooks/useMatinfo"
+import { MatinfoProduct, MatinfoListParams } from "@/lib/api/matinfo"
+import { DataTable, DataTableColumn } from "@/components/crud/data-table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Database,
   RefreshCw,
-  Search,
-  Download,
-  CheckCircle,
-  Clock,
-  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
   Package,
   Loader2,
-  ArrowRight
+  Database,
+  Download,
+  Beaker
 } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
-import Link from "next/link"
 
-interface GTINStatistics {
-  total_gtins: number
-  pending: number
-  synced: number
-  failed: number
-  last_sync: string | null
-  last_sync_status: string | null
-}
-
-interface MatinfoProduct {
-  id: number
-  gtin: string
-  name: string
-  brand: string | null
-  producer: string | null
-  package_size: string | null
-  last_updated: string | null
-}
-
-async function fetchStatistics(): Promise<GTINStatistics> {
-  const response = await apiClient.get('/v1/matinfo/tracker/statistics')
-  return response.data
-}
-
-async function fetchPendingGtins(limit: number = 50): Promise<string[]> {
-  const response = await apiClient.get(`/v1/matinfo/tracker/pending?limit=${limit}`)
-  return response.data
-}
-
-async function searchMatinfoProducts(query: string): Promise<MatinfoProduct[]> {
-  if (!query.trim()) return []
-  const response = await apiClient.get(`/v1/produkter/matinfo/search?query=${encodeURIComponent(query)}&limit=20`)
-  return response.data
-}
+const columns: DataTableColumn<MatinfoProduct>[] = [
+  {
+    key: "gtin",
+    label: "GTIN",
+    sortable: true,
+    render: (value) => (
+      <span className="font-mono text-sm">{value}</span>
+    ),
+  },
+  {
+    key: "name",
+    label: "Produktnavn",
+    sortable: true,
+    render: (value) => (
+      <div className="flex items-center gap-2">
+        <Package className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium max-w-[300px] truncate">{value}</span>
+      </div>
+    ),
+  },
+  {
+    key: "brandName",
+    label: "Merke",
+    sortable: true,
+    render: (value) => value || "-",
+  },
+  {
+    key: "allergens",
+    label: "Allergener",
+    render: (_, item) => {
+      const containsAllergens = item.allergens.filter(a => a.level === "CONTAINS")
+      if (containsAllergens.length === 0) {
+        return <Badge variant="outline" className="text-xs">Ingen</Badge>
+      }
+      return (
+        <div className="flex gap-1 flex-wrap max-w-[200px]">
+          {containsAllergens.slice(0, 3).map(a => (
+            <Badge key={a.code} variant="destructive" className="text-xs">
+              {a.name}
+            </Badge>
+          ))}
+          {containsAllergens.length > 3 && (
+            <Badge variant="outline" className="text-xs">+{containsAllergens.length - 3}</Badge>
+          )}
+        </div>
+      )
+    },
+  },
+  {
+    key: "nutrients",
+    label: "Næring",
+    render: (_, item) => (
+      <Badge variant="secondary" className="text-xs">
+        <Beaker className="h-3 w-3 mr-1" />
+        {item.nutrients.length} verdier
+      </Badge>
+    ),
+  },
+]
 
 export default function MatinfoPage() {
-  const queryClient = useQueryClient()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [daysBack, setDaysBack] = useState("7")
-
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['matinfo-stats'],
-    queryFn: fetchStatistics,
-    refetchInterval: 30000,
+  const router = useRouter()
+  const [params, setParams] = useState<MatinfoListParams>({
+    page: 1,
+    size: 20,
   })
 
-  const { data: pendingGtins = [], isLoading: pendingLoading } = useQuery({
-    queryKey: ['matinfo-pending'],
-    queryFn: () => fetchPendingGtins(10),
-  })
+  // Data hooks
+  const { data, isLoading } = useMatinfoProducts(params)
+  const { data: updatedGtins, isLoading: loadingUpdated } = useUpdatedGtins(7)
+  const { data: newProducts, isLoading: loadingNew } = useNewProducts(30)
 
-  const { data: searchResults = [], isLoading: searchLoading, refetch: searchRefetch } = useQuery({
-    queryKey: ['matinfo-search', searchQuery],
-    queryFn: () => searchMatinfoProducts(searchQuery),
-    enabled: searchQuery.length > 2,
-  })
+  // Mutation hooks
+  const deleteMutation = useDeleteMatinfoProduct()
+  const syncMutation = useSyncProducts()
 
-  const fetchUpdatesMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiClient.post(`/v1/matinfo/tracker/fetch-updates?days_back=${daysBack}`)
-      return response.data
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Oppdateringer hentet",
-        description: `${data.new} nye, ${data.updated} oppdaterte GTIN-koder`,
-      })
-      queryClient.invalidateQueries({ queryKey: ['matinfo-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['matinfo-pending'] })
-    },
-    onError: (error) => {
-      toast({
-        title: "Feil",
-        description: "Kunne ikke hente oppdateringer",
-        variant: "destructive",
-      })
-    },
-  })
+  const products = data?.items || []
+  const total = data?.total || 0
+  const page = data?.page || 1
+  const pageSize = data?.size || 20
+  const totalPages = Math.ceil(total / pageSize)
 
-  const syncProductsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiClient.post(`/v1/matinfo/sync/products?days_back=${daysBack}`)
-      return response.data
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Synkronisering fullført",
-        description: `${data.synced} produkter synkronisert, ${data.failed} feilet`,
-      })
-      queryClient.invalidateQueries({ queryKey: ['matinfo-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['matinfo-pending'] })
-    },
-    onError: (error) => {
-      toast({
-        title: "Feil",
-        description: "Kunne ikke synkronisere produkter",
-        variant: "destructive",
-      })
-    },
-  })
+  const handleParamsChange = useCallback((newParams: { page?: number; page_size?: number; search?: string }) => {
+    setParams(prev => ({
+      ...prev,
+      page: newParams.page || prev.page,
+      size: newParams.page_size || prev.size,
+      search: newParams.search,
+    }))
+  }, [])
 
-  const handleSearch = () => {
-    if (searchQuery.length > 2) {
-      searchRefetch()
-    }
+  const handleEdit = (product: MatinfoProduct) => {
+    router.push(`/matinfo/${product.id}`)
   }
 
-  const syncProgress = stats
-    ? (stats.synced / Math.max(stats.total_gtins, 1)) * 100
-    : 0
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id)
+  }
+
+  const handleSync = () => {
+    syncMutation.mutate(7)
+  }
+
+  if (isLoading && products.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map(i => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-start">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Matinfo Administrasjon</h1>
           <p className="text-muted-foreground">
-            Synkroniser og administrer produktdata fra Matinfo.no
+            Administrer produktinformasjon, allergener og næringsverdier
           </p>
         </div>
-        <Link href="/products/ean-management">
-          <Button variant="outline">
-            <Package className="mr-2 h-4 w-4" />
-            GTIN-kobling
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </Link>
+        <Button
+          onClick={handleSync}
+          disabled={syncMutation.isPending}
+        >
+          {syncMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          Synkroniser
+        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {/* Status Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totalt i database</CardTitle>
+            <CardTitle className="text-sm font-medium">Totalt produkter</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? "..." : stats?.total_gtins.toLocaleString('nb-NO') || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Matinfo-produkter</p>
+            <div className="text-2xl font-bold">{total.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              produkter i databasen
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Synkronisert</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium">Oppdatert (7 dager)</CardTitle>
+            <Download className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {statsLoading ? "..." : stats?.synced.toLocaleString('nb-NO') || 0}
-            </div>
-            <Progress value={syncProgress} className="mt-2 h-2" />
+            {loadingUpdated ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{updatedGtins?.count || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  produkter med oppdateringer
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Venter</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <CardTitle className="text-sm font-medium">Nye produkter</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">
-              {statsLoading ? "..." : stats?.pending.toLocaleString('nb-NO') || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Venter på synkronisering</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Feilet</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {statsLoading ? "..." : stats?.failed.toLocaleString('nb-NO') || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Trenger oppmerksomhet</p>
+            {loadingNew ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{newProducts?.count || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  nye i Matinfo (30 dager)
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Sync Controls */}
+      {/* Sync Status */}
+      {syncMutation.isSuccess && (
+        <Card className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
+          <CardContent className="flex items-center gap-4 py-4">
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <div>
+              <p className="font-medium">Synkronisering fullført</p>
+              <p className="text-sm text-muted-foreground">
+                {syncMutation.data?.synced} produkter synkronisert
+                {syncMutation.data?.failed ? `, ${syncMutation.data.failed} feilet` : ''}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {syncMutation.isError && (
+        <Card className="border-destructive/50 bg-destructive/10">
+          <CardContent className="flex items-center gap-4 py-4">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-medium">Synkronisering feilet</p>
+              <p className="text-sm text-muted-foreground">
+                Kunne ikke synkronisere med Matinfo.no
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Products Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
-            Synkronisering
-          </CardTitle>
+          <CardTitle>Matinfo-produkter</CardTitle>
           <CardDescription>
-            Hent oppdateringer fra Matinfo.no og synkroniser produktdata
+            Produkter med næringsinformasjon og allergener fra Matinfo.no
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Dager tilbake:</span>
-              <Select value={daysBack} onValueChange={setDaysBack}>
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 dag</SelectItem>
-                  <SelectItem value="7">7 dager</SelectItem>
-                  <SelectItem value="14">14 dager</SelectItem>
-                  <SelectItem value="30">30 dager</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              onClick={() => fetchUpdatesMutation.mutate()}
-              disabled={fetchUpdatesMutation.isPending}
-            >
-              {fetchUpdatesMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              Hent oppdateringer
-            </Button>
-
-            <Button
-              onClick={() => syncProductsMutation.mutate()}
-              disabled={syncProductsMutation.isPending}
-              variant="default"
-            >
-              {syncProductsMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              Synkroniser produkter
-            </Button>
-          </div>
-
-          {stats?.last_sync && (
-            <p className="text-sm text-muted-foreground">
-              Siste synkronisering: {new Date(stats.last_sync).toLocaleString('nb-NO')}
-              {stats.last_sync_status && (
-                <Badge variant="secondary" className="ml-2">
-                  {stats.last_sync_status}
-                </Badge>
-              )}
-            </p>
-          )}
+        <CardContent>
+          <DataTable
+            tableName="matinfo"
+            columns={columns}
+            data={products}
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            totalPages={totalPages}
+            onParamsChange={handleParamsChange}
+            onDelete={(id) => handleDelete(String(id))}
+            loading={isLoading}
+            idField="id"
+            searchPlaceholder="Søk etter produkt, GTIN eller merke..."
+            enableEdit={true}
+            enableDelete={true}
+            enableBulkOperations={false}
+            onEdit={handleEdit}
+          />
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Pending GTINs */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Ventende GTIN-koder
-            </CardTitle>
-            <CardDescription>
-              GTIN-koder som venter på synkronisering
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pendingLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            ) : pendingGtins.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <CheckCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Ingen ventende GTIN-koder</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {pendingGtins.map((gtin) => (
-                  <div key={gtin} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                    <code className="text-sm font-mono">{gtin}</code>
-                    <Badge variant="secondary">Venter</Badge>
-                  </div>
-                ))}
-                {stats && stats.pending > 10 && (
-                  <p className="text-sm text-muted-foreground text-center pt-2">
-                    ...og {stats.pending - 10} til
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Search */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
-              Søk i Matinfo
-            </CardTitle>
-            <CardDescription>
-              Søk etter produkter i Matinfo-databasen
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Søk etter produktnavn..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <Button onClick={handleSearch} disabled={searchLoading || searchQuery.length < 3}>
-                {searchLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-
-            {searchResults.length > 0 && (
-              <div className="max-h-[300px] overflow-y-auto space-y-2">
-                {searchResults.map((product: any) => (
-                  <div key={product.id} className="p-3 bg-muted/50 rounded-lg space-y-1">
-                    <div className="font-medium text-sm">{product.name}</div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <code>{product.gtin}</code>
-                      {product.brand && <span>- {product.brand}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }

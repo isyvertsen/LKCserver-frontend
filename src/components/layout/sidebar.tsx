@@ -27,7 +27,8 @@ import {
   Star,
   FolderTree,
   Factory,
-  Clock
+  Clock,
+  Beaker
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -67,7 +68,8 @@ const iconMap: Record<string, any> = {
   BookOpen,
   FolderTree,
   Factory,
-  Clock
+  Clock,
+  Beaker
 }
 
 // Reverse map to get icon name from component
@@ -99,6 +101,7 @@ const navigationGroups = [
       { name: "Kategorier", href: "/kategorier", icon: FolderTree },
       { name: "Leverandører", href: "/leverandorer", icon: Factory },
       { name: "EAN-kodestyring", href: "/products/ean-management", icon: Barcode },
+      { name: "Matinfo", href: "/matinfo", icon: Beaker },
     ]
   },
   {
