@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { Suspense, useMemo } from "react"
 import { DataTable, DataTableColumn } from "@/components/crud/data-table"
 import { useEmployeesList, useDeleteEmployee } from "@/hooks/useEmployees"
 import { Employee } from "@/types/models"
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CrudListParams } from "@/hooks/useCrud"
+import { useUrlParams } from "@/hooks/useUrlParams"
 import { Download } from "lucide-react"
 
 const columns: DataTableColumn<Employee>[] = [
@@ -66,21 +67,34 @@ const columns: DataTableColumn<Employee>[] = [
   },
 ]
 
-export default function EmployeesPage() {
-  const [params, setParams] = useState<{
-    skip: number
-    limit: number
-    aktiv: boolean
-    avdeling?: string
-    search?: string
-  }>({
-    skip: 0,
-    limit: 20,
-    aktiv: true,
-  })
+type EmployeeListParams = {
+  page: number
+  page_size: number
+  aktiv: boolean
+  avdeling?: string
+  search?: string
+}
 
-  const { data, isLoading } = useEmployeesList(params)
+const defaultParams: EmployeeListParams = {
+  page: 1,
+  page_size: 20,
+  aktiv: true,
+}
+
+function EmployeesPageContent() {
+  const { params, setParams } = useUrlParams<EmployeeListParams>(defaultParams)
   const deleteMutation = useDeleteEmployee()
+
+  // Convert page/page_size to skip/limit for API
+  const apiParams = {
+    skip: ((params.page || 1) - 1) * (params.page_size || 20),
+    limit: params.page_size || 20,
+    aktiv: params.aktiv,
+    avdeling: params.avdeling,
+    search: params.search,
+  }
+
+  const { data, isLoading } = useEmployeesList(apiParams)
 
   // Get unique departments from all employees for filter
   const departments = useMemo(() => {
@@ -92,12 +106,11 @@ export default function EmployeesPage() {
   }, [data?.items])
 
   const handleParamsChange = (newParams: CrudListParams) => {
-    setParams(prev => ({
-      ...prev,
-      skip: ((newParams.page ?? 1) - 1) * prev.limit,
-      limit: newParams.page_size || prev.limit,
+    setParams({
+      page: newParams.page,
+      page_size: newParams.page_size,
       search: newParams.search || undefined,
-    }))
+    })
   }
 
   const handleDelete = (id: number) => {
@@ -149,7 +162,7 @@ export default function EmployeesPage() {
           <Switch
             id="aktiv-filter"
             checked={params.aktiv}
-            onCheckedChange={(checked) => setParams(prev => ({ ...prev, aktiv: checked, skip: 0 }))}
+            onCheckedChange={(checked) => setParams({ aktiv: checked, page: 1 })}
           />
           <Label htmlFor="aktiv-filter">Kun aktive ansatte</Label>
         </div>
@@ -158,11 +171,10 @@ export default function EmployeesPage() {
           <Label>Avdeling:</Label>
           <Select
             value={params.avdeling || "all"}
-            onValueChange={(value) => setParams(prev => ({
-              ...prev,
+            onValueChange={(value) => setParams({
               avdeling: value === "all" ? undefined : value,
-              skip: 0
-            }))}
+              page: 1
+            })}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Alle avdelinger" />
@@ -182,8 +194,8 @@ export default function EmployeesPage() {
         columns={columns}
         data={data?.items || []}
         total={data?.total || 0}
-        page={data?.page || 1}
-        pageSize={data?.page_size || 20}
+        page={params.page || 1}
+        pageSize={params.page_size || 20}
         totalPages={data?.total_pages || 1}
         onParamsChange={handleParamsChange}
         onDelete={handleDelete}
@@ -192,5 +204,13 @@ export default function EmployeesPage() {
         searchPlaceholder="Søk etter navn, e-post eller telefon..."
       />
     </div>
+  )
+}
+
+export default function EmployeesPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Laster...</div>}>
+      <EmployeesPageContent />
+    </Suspense>
   )
 }
