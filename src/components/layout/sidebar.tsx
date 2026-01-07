@@ -23,7 +23,8 @@ import {
   ChevronRight,
   Tag,
   MessageSquare,
-  BookOpen
+  BookOpen,
+  Star
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,43 @@ import { signOut, useSession } from "next-auth/react"
 import { User } from "lucide-react"
 import { ReportIssueDialog } from "@/components/feedback/ReportIssueDialog"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
+
+interface MenuItem {
+  name: string
+  href: string
+  icon: any
+}
+
+interface FavoriteItem {
+  name: string
+  href: string
+  icon: string
+  lastVisited: number
+}
+
+// Icon map for storing/retrieving icons by name
+const iconMap: Record<string, any> = {
+  LayoutDashboard,
+  Users,
+  ShoppingCart,
+  Package,
+  CalendarDays,
+  ChefHat,
+  Truck,
+  UserCheck,
+  BarChart3,
+  Settings,
+  UtensilsCrossed,
+  Barcode,
+  Tag,
+  BookOpen
+}
+
+// Reverse map to get icon name from component
+const getIconName = (IconComponent: any): string => {
+  const entry = Object.entries(iconMap).find(([_, icon]) => icon === IconComponent)
+  return entry ? entry[0] : 'LayoutDashboard'
+}
 
 const navigationGroups = [
   {
@@ -70,12 +108,87 @@ const navigationGroups = [
   }
 ]
 
+// Helper to get all menu items as flat array
+const getAllMenuItems = (): MenuItem[] => {
+  return navigationGroups.flatMap(group => group.items)
+}
+
 export function Sidebar() {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [favorites, setFavorites] = useState<MenuItem[]>([])
   const { data: session } = useSession()
+
+  // Load favorites from localStorage on mount
+  useEffect(() => {
+    const loadFavorites = () => {
+      try {
+        const stored = localStorage.getItem('lkc-favorites')
+        if (stored) {
+          const favoriteItems: FavoriteItem[] = JSON.parse(stored)
+          // Convert stored favorites back to menu items
+          const menuItems = favoriteItems
+            .sort((a, b) => b.lastVisited - a.lastVisited)
+            .slice(0, 5)
+            .map(fav => ({
+              name: fav.name,
+              href: fav.href,
+              icon: iconMap[fav.icon] || LayoutDashboard
+            }))
+          setFavorites(menuItems)
+        }
+      } catch (error) {
+        console.error('Failed to load favorites:', error)
+      }
+    }
+    loadFavorites()
+  }, [])
+
+  // Update favorites when a menu item is clicked
+  const handleMenuClick = (item: MenuItem) => {
+    try {
+      const stored = localStorage.getItem('lkc-favorites')
+      let favoriteItems: FavoriteItem[] = stored ? JSON.parse(stored) : []
+
+      // Find existing favorite or create new one
+      const existingIndex = favoriteItems.findIndex(fav => fav.href === item.href)
+      const favoriteItem: FavoriteItem = {
+        name: item.name,
+        href: item.href,
+        icon: getIconName(item.icon),
+        lastVisited: Date.now()
+      }
+
+      if (existingIndex >= 0) {
+        // Update existing favorite
+        favoriteItems[existingIndex] = favoriteItem
+      } else {
+        // Add new favorite
+        favoriteItems.push(favoriteItem)
+      }
+
+      // Keep only the most recent 10 items in storage
+      favoriteItems = favoriteItems
+        .sort((a, b) => b.lastVisited - a.lastVisited)
+        .slice(0, 10)
+
+      localStorage.setItem('lkc-favorites', JSON.stringify(favoriteItems))
+
+      // Update state with top 5
+      const topFavorites = favoriteItems
+        .slice(0, 5)
+        .map(fav => ({
+          name: fav.name,
+          href: fav.href,
+          icon: iconMap[fav.icon] || LayoutDashboard
+        }))
+      setFavorites(topFavorites)
+    } catch (error) {
+      console.error('Failed to update favorites:', error)
+    }
+  }
 
   // Toggle collapsed state (localStorage removed to avoid SSR issues)
   const toggleCollapsed = () => {
@@ -126,6 +239,51 @@ export function Sidebar() {
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
+            {/* Favorites section */}
+            {favorites.length > 0 && (
+              <div>
+                {!collapsed && (
+                  <h3 className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Star className="h-3 w-3" />
+                    Favoritter
+                  </h3>
+                )}
+                <div className="space-y-1">
+                  {favorites.map((item) => {
+                    const isActive = pathname === item.href ||
+                      (item.href !== "/" && pathname.startsWith(item.href))
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-foreground hover:bg-muted",
+                          collapsed && "justify-center"
+                        )}
+                        onClick={() => {
+                          setSidebarOpen(false)
+                          handleMenuClick(item)
+                        }}
+                        title={collapsed ? item.name : undefined}
+                      >
+                        <item.icon className={cn(
+                          "h-5 w-5",
+                          !collapsed && "mr-3",
+                          isActive ? "text-primary" : "text-muted-foreground"
+                        )} />
+                        {!collapsed && item.name}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Regular navigation groups */}
             {navigationGroups.map((group, groupIndex) => (
               <div key={groupIndex}>
                 {group.name && !collapsed && (
@@ -149,7 +307,10 @@ export function Sidebar() {
                             : "text-foreground hover:bg-muted",
                           collapsed && "justify-center"
                         )}
-                        onClick={() => setSidebarOpen(false)}
+                        onClick={() => {
+                          setSidebarOpen(false)
+                          handleMenuClick(item)
+                        }}
                         title={collapsed ? item.name : undefined}
                       >
                         <item.icon className={cn(
