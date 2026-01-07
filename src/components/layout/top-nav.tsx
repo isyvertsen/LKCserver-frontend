@@ -68,7 +68,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Menyer", href: "/menus", icon: CalendarDays },
       { name: "Perioder", href: "/perioder", icon: Clock },
       { name: "Oppskrifter", href: "/recipes", icon: ChefHat },
-      { name: "Retter", href: "/dishes/create", icon: UtensilsCrossed },
+      { name: "Retter", href: "/dishes", icon: UtensilsCrossed },
     ]
   },
   {
@@ -86,6 +86,7 @@ const navigationGroups: NavGroup[] = [
     icon: ShoppingCart,
     items: [
       { name: "Kunder", href: "/customers", icon: Users },
+      { name: "Kundegrupper", href: "/kundegrupper", icon: Users },
       { name: "Ordrer", href: "/orders", icon: ShoppingCart },
       { name: "Leveranser", href: "/deliveries", icon: Truck },
       { name: "Etiketter", href: "/labels", icon: Tag },

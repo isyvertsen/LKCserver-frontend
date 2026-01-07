@@ -1,14 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
-  useKategorierList,
-  useCreateKategori,
-  useUpdateKategori,
-  useDeleteKategori
-} from "@/hooks/useKategorier"
-import { Kategori } from "@/lib/api/kategorier"
-import { KategoriDialog, KategoriFormValues } from "@/components/kategorier/kategori-dialog"
+  useCombinedDishesList,
+  useDeleteCombinedDish
+} from "@/hooks/useCombinedDishes"
+import { CombinedDish } from "@/lib/api/combined-dishes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -36,64 +35,42 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, MoreHorizontal, Pencil, Trash2, Search } from "lucide-react"
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, UtensilsCrossed, ChefHat, Package } from "lucide-react"
+import { format } from "date-fns"
+import { nb } from "date-fns/locale"
 
-export default function KategorierPage() {
+export default function DishesPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingKategori, setEditingKategori] = useState<Kategori | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deletingKategori, setDeletingKategori] = useState<Kategori | null>(null)
+  const [deletingDish, setDeletingDish] = useState<CombinedDish | null>(null)
 
-  const { data, isLoading } = useKategorierList()
-  const createMutation = useCreateKategori()
-  const updateMutation = useUpdateKategori()
-  const deleteMutation = useDeleteKategori()
+  const { data, isLoading } = useCombinedDishesList({
+    skip: 0,
+    limit: 100,
+    search: searchTerm || undefined
+  })
+  const deleteMutation = useDeleteCombinedDish()
 
-  const kategorier = data?.items || []
+  const dishes = data?.items || []
 
-  const handleCreate = () => {
-    setEditingKategori(null)
-    setDialogOpen(true)
+  const handleEdit = (dish: CombinedDish) => {
+    router.push(`/dishes/create?id=${dish.id}`)
   }
 
-  const handleEdit = (kategori: Kategori) => {
-    setEditingKategori(kategori)
-    setDialogOpen(true)
-  }
-
-  const handleDelete = (kategori: Kategori) => {
-    setDeletingKategori(kategori)
+  const handleDelete = (dish: CombinedDish) => {
+    setDeletingDish(dish)
     setDeleteDialogOpen(true)
   }
 
-  const handleSubmit = (data: KategoriFormValues) => {
-    if (editingKategori) {
-      updateMutation.mutate(
-        { id: editingKategori.kategoriid, data },
-        {
-          onSuccess: () => {
-            setDialogOpen(false)
-            setEditingKategori(null)
-          },
-        }
-      )
-    } else {
-      createMutation.mutate(data, {
-        onSuccess: () => {
-          setDialogOpen(false)
-        },
-      })
-    }
-  }
-
   const confirmDelete = () => {
-    if (deletingKategori) {
-      deleteMutation.mutate(deletingKategori.kategoriid, {
+    if (deletingDish) {
+      deleteMutation.mutate(deletingDish.id, {
         onSuccess: () => {
           setDeleteDialogOpen(false)
-          setDeletingKategori(null)
+          setDeletingDish(null)
         },
       })
     }
@@ -110,7 +87,7 @@ export default function KategorierPage() {
           <CardContent className="pt-6">
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+                <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
           </CardContent>
@@ -123,30 +100,32 @@ export default function KategorierPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Kategorier</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Sammensatte retter</h1>
           <p className="text-muted-foreground">
-            Administrer produktkategorier
+            Kombiner oppskrifter og produkter til komplette retter
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Ny kategori
-        </Button>
+        <Link href="/dishes/create">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Ny rett
+          </Button>
+        </Link>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Alle kategorier</CardTitle>
+              <CardTitle>Alle retter</CardTitle>
               <CardDescription>
-                {kategorier.length} kategorier totalt
+                {dishes.length} retter totalt
               </CardDescription>
             </div>
             <div className="relative w-64">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Søk etter kategori..."
+                placeholder="Søk etter rett..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -159,32 +138,54 @@ export default function KategorierPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Navn</TableHead>
-                <TableHead>Beskrivelse</TableHead>
+                <TableHead>Komponenter</TableHead>
+                <TableHead>Opprettet</TableHead>
                 <TableHead className="w-[100px]">Handlinger</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(() => {
-                const filtered = kategorier.filter(k =>
-                  k.kategori.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  (k.beskrivelse && k.beskrivelse.toLowerCase().includes(searchTerm.toLowerCase()))
-                )
-
-                if (filtered.length === 0) {
-                  return (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground">
-                        {searchTerm ? "Ingen kategorier matcher søket." : "Ingen kategorier funnet. Opprett en ny kategori for å komme i gang."}
-                      </TableCell>
-                    </TableRow>
-                  )
-                }
-
-                return filtered.map((kategori) => (
-                  <TableRow key={kategori.kategoriid}>
-                    <TableCell className="font-medium">{kategori.kategori}</TableCell>
+              {dishes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <UtensilsCrossed className="h-8 w-8" />
+                      <p>Ingen retter funnet.</p>
+                      <Link href="/dishes/create">
+                        <Button variant="outline" size="sm">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Opprett din første rett
+                        </Button>
+                      </Link>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                dishes.map((dish) => (
+                  <TableRow key={dish.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{dish.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {dish.recipe_components.length > 0 && (
+                          <Badge variant="secondary" className="gap-1">
+                            <ChefHat className="h-3 w-3" />
+                            {dish.recipe_components.length} oppskrift{dish.recipe_components.length !== 1 ? 'er' : ''}
+                          </Badge>
+                        )}
+                        {dish.product_components.length > 0 && (
+                          <Badge variant="outline" className="gap-1">
+                            <Package className="h-3 w-3" />
+                            {dish.product_components.length} produkt{dish.product_components.length !== 1 ? 'er' : ''}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {kategori.beskrivelse || "-"}
+                      {format(new Date(dish.created_at), "d. MMM yyyy", { locale: nb })}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -195,13 +196,13 @@ export default function KategorierPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(kategori)}>
+                          <DropdownMenuItem onClick={() => handleEdit(dish)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Rediger
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => handleDelete(kategori)}
+                            onClick={() => handleDelete(dish)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Slett
@@ -211,26 +212,18 @@ export default function KategorierPage() {
                     </TableCell>
                   </TableRow>
                 ))
-              })()}
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-
-      <KategoriDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        kategori={editingKategori}
-        onSubmit={handleSubmit}
-        loading={createMutation.isPending || updateMutation.isPending}
-      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dette vil slette kategorien &quot;{deletingKategori?.kategori}&quot;.
+              Dette vil slette retten &quot;{deletingDish?.name}&quot;.
               Handlingen kan ikke angres.
             </AlertDialogDescription>
           </AlertDialogHeader>

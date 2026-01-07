@@ -64,6 +64,7 @@ export default function LeverandorerPage() {
       ...prev,
       skip: ((newParams.page ?? 1) - 1) * prev.limit,
       limit: newParams.page_size || prev.limit,
+      search: newParams.search || undefined,
     }))
   }
 
