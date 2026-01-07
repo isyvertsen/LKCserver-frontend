@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { Search, CheckCircle, XCircle, Plus, Upload } from "lucide-react"
+import { Search, CheckCircle, XCircle, Plus, Upload, Pencil } from "lucide-react"
 import { MatinfoSearchDialog } from "@/components/produkter/matinfo-search-dialog"
 import { BulkGtinUpdateDialog } from "@/components/produkter/bulk-gtin-update-dialog"
 import { useProdukterList } from "@/hooks/useProdukter"
@@ -151,6 +151,11 @@ export default function ProdukterPage() {
 
   const rowActions = (row: Produkt) => [
     {
+      label: "Rediger",
+      icon: Pencil,
+      onClick: () => router.push(`/produkter/${row.produktid}`),
+    },
+    {
       label: row.ean_kode ? "Endre GTIN" : "Søk GTIN",
       icon: Search,
       onClick: () => handleSearchGtin(row),
@@ -174,10 +179,16 @@ export default function ProdukterPage() {
             Administrer produkter og GTIN-koder
           </p>
         </div>
-        <Button onClick={() => setBulkDialogOpen(true)}>
-          <Upload className="h-4 w-4 mr-2" />
-          Masse-oppdatering
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Masse-oppdatering
+          </Button>
+          <Button onClick={() => router.push("/produkter/new")}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nytt produkt
+          </Button>
+        </div>
       </div>
 
       {/* Stats and filter */}

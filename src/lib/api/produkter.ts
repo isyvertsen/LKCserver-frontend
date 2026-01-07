@@ -106,6 +106,31 @@ export interface BulkGtinUpdateResponse {
   }>
 }
 
+export type ProduktCreateData = {
+  produktnavn: string
+  leverandorsproduktnr?: string | null
+  antalleht?: number | null
+  pakningstype?: string | null
+  pakningsstorrelse?: string | null
+  pris?: number | null
+  paknpris?: number | null
+  levrandorid?: number | null
+  kategoriid?: number | null
+  lagermengde?: number | null
+  bestillingsgrense?: number | null
+  bestillingsmengde?: number | null
+  ean_kode?: string | null
+  utgatt?: boolean | null
+  webshop?: boolean | null
+  mvaverdi?: number | null
+  lagerid?: number | null
+  utregningsfaktor?: number | null
+  utregnetpris?: number | null
+  visningsnavn?: string | null
+  visningsnavn2?: string | null
+  rett_komponent?: boolean | null
+}
+
 export const produkterApi = {
   /**
    * List produkter with pagination and filtering
@@ -131,6 +156,14 @@ export const produkterApi = {
    */
   async get(id: number): Promise<Produkt> {
     const response = await apiClient.get<Produkt>(`/v1/produkter/${id}`)
+    return response.data
+  },
+
+  /**
+   * Create a new produkt
+   */
+  async create(data: ProduktCreateData): Promise<Produkt> {
+    const response = await apiClient.post<Produkt>('/v1/produkter/', data)
     return response.data
   },
 

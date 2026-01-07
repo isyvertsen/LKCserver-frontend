@@ -3,6 +3,7 @@ import {
   produkterApi,
   Produkt,
   ProduktListParams,
+  ProduktCreateData,
   MatinfoSearchResult,
   GtinUpdateResponse,
   BulkGtinUpdate,
@@ -36,6 +37,35 @@ export function useProdukt(
     queryFn: () => produkterApi.get(id),
     enabled: !!id,
     ...options,
+  })
+}
+
+/**
+ * Hook for å opprette nytt produkt
+ */
+export function useCreateProdukt(
+  options?: UseMutationOptions<Produkt, Error, ProduktCreateData>
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation<Produkt, Error, ProduktCreateData>({
+    mutationFn: (data) => produkterApi.create(data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['produkter'] })
+      toast({
+        title: 'Produkt opprettet',
+        description: `"${data.produktnavn}" ble opprettet`,
+      })
+      options?.onSuccess?.(data, variables, undefined)
+    },
+    onError: (error, variables, context) => {
+      toast({
+        title: 'Feil ved opprettelse',
+        description: error.message,
+        variant: 'destructive',
+      })
+      options?.onError?.(error, variables, context)
+    },
   })
 }
 
