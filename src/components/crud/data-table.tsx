@@ -82,6 +82,10 @@ interface DataTableProps<T extends CrudItem> {
   enableDelete?: boolean
   enableBulkOperations?: boolean
   bulkExportColumns?: { key: string; label: string }[]
+  // Optional callbacks for dialog-based editing (overrides routing)
+  onEdit?: (item: T) => void
+  onCreate?: () => void
+  createButtonLabel?: string
 }
 
 export function DataTable<T extends CrudItem>({
@@ -103,7 +107,10 @@ export function DataTable<T extends CrudItem>({
   enableBulkOperations = true,
   searchPlaceholder = "Search...",
   hideAddButton = false,
-  bulkExportColumns
+  bulkExportColumns,
+  onEdit,
+  onCreate,
+  createButtonLabel = "Add New"
 }: DataTableProps<T>) {
   const router = useRouter()
   const [search, setSearch] = useState("")
@@ -263,12 +270,19 @@ export function DataTable<T extends CrudItem>({
           </div>
         </div>
         {!hideAddButton && (
-          <Button asChild>
-            <Link href={`/${tableName}/new`}>
+          onCreate ? (
+            <Button onClick={onCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              Add New
-            </Link>
-          </Button>
+              {createButtonLabel}
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href={`/${tableName}/new`}>
+                <Plus className="mr-2 h-4 w-4" />
+                {createButtonLabel}
+              </Link>
+            </Button>
+          )
         )}
       </div>
 
@@ -351,7 +365,7 @@ export function DataTable<T extends CrudItem>({
                         <DropdownMenuContent align="end">
                           {enableEdit && (
                             <DropdownMenuItem
-                              onClick={() => router.push(`/${tableName}/${itemId}`)}
+                              onClick={() => onEdit ? onEdit(item) : router.push(`/${tableName}/${itemId}`)}
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit

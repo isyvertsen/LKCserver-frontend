@@ -8,7 +8,8 @@ import { useKundegrupper } from "@/hooks/useKundegruppe"
 import { Order } from "@/types/models"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
-import { Plus, Filter, ArrowUp, ArrowDown, CheckCircle, PlayCircle, Package } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Plus, Filter, ArrowUp, ArrowDown, CheckCircle, PlayCircle, Package, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -44,9 +45,11 @@ const getOrderStatus = (order: Order) => {
 export default function OrdersPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const [searchTerm, setSearchTerm] = useState("")
   const [params, setParams] = useState({
     skip: 0,
     limit: 20,
+    search: undefined as string | undefined,
     sort_by: 'leveringsdato' as 'leveringsdato' | 'ordredato',
     sort_order: 'asc' as 'asc' | 'desc',
     kundegruppe_ids: [] as number[],
@@ -62,6 +65,15 @@ export default function OrdersPage() {
       ...prev,
       skip: newParams.page ? (newParams.page - 1) * prev.limit : prev.skip,
       limit: newParams.page_size || prev.limit,
+    }))
+  }
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value)
+    setParams(prev => ({
+      ...prev,
+      search: value || undefined,
+      skip: 0, // Reset to first page when searching
     }))
   }
 
@@ -151,8 +163,19 @@ export default function OrdersPage() {
         </Button>
       </div>
 
-      {/* Filters and sorting */}
-      <div className="flex gap-4 items-center">
+      {/* Search and filters */}
+      <div className="flex gap-4 items-center flex-wrap">
+        {/* Search */}
+        <div className="relative w-[300px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Søk etter kunde eller ordrenummer..."
+            value={searchTerm}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         {/* Customer group filter */}
         <Popover>
           <PopoverTrigger asChild>
