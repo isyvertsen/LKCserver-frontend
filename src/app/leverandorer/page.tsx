@@ -68,8 +68,8 @@ export default function LeverandorerPage() {
     }))
   }
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id)
+  const handleDelete = (id: number | string) => {
+    deleteMutation.mutate(Number(id))
   }
 
   return (

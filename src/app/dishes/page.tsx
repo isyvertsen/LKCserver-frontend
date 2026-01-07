@@ -97,12 +97,12 @@ export default function DishesPage() {
     router.push(`/dishes/create?id=${dish.id}`)
   }
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id)
+  const handleDelete = (id: number | string) => {
+    deleteMutation.mutate(Number(id))
   }
 
-  const handleBulkDelete = (ids: number[]) => {
-    bulkDeleteMutation.mutate(ids)
+  const handleBulkDelete = (ids: (number | string)[]) => {
+    bulkDeleteMutation.mutate(ids.map(Number))
   }
 
   if (isLoading && dishes.length === 0) {

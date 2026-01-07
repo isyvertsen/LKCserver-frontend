@@ -200,7 +200,7 @@ export default function OrdersPage() {
                 )}
               </div>
               <div className="space-y-2">
-                {kundegrupper?.map(gruppe => (
+                {kundegrupper?.items?.map(gruppe => (
                   <div key={gruppe.gruppeid} className="flex items-center space-x-2">
                     <Checkbox
                       id={`gruppe-${gruppe.gruppeid}`}
