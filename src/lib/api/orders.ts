@@ -102,5 +102,26 @@ export const ordersApi = {
   // Delete order line
   deleteOrderLine: async (orderId: number, lineId: number): Promise<void> => {
     await apiClient.delete(`/v1/ordrer/${orderId}/detaljer/${lineId}`)
+  },
+
+  // Duplicate order
+  duplicate: async (id: number): Promise<Order> => {
+    const response = await apiClient.post(`/v1/ordrer/${id}/duplicate`)
+    return response.data
+  },
+
+  // Update order status
+  updateStatus: async (id: number, statusId: number): Promise<{ message: string }> => {
+    const response = await apiClient.put(`/v1/ordrer/${id}/status?status_id=${statusId}`)
+    return response.data
+  },
+
+  // Batch update status for multiple orders
+  batchUpdateStatus: async (orderIds: number[], statusId: number): Promise<{ message: string; updated_count: number }> => {
+    const params = new URLSearchParams()
+    orderIds.forEach(id => params.append('ordre_ids', id.toString()))
+    params.append('status_id', statusId.toString())
+    const response = await apiClient.post(`/v1/ordrer/batch/status?${params}`)
+    return response.data
   }
 }

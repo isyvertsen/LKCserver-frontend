@@ -3,6 +3,7 @@ import { createCrudApi, BaseListParams, BaseListResponse } from './base'
 
 export interface LeverandorListParams extends BaseListParams {
   aktiv?: boolean
+  search?: string
 }
 
 export type LeverandorListResponse = BaseListResponse<Leverandor>
