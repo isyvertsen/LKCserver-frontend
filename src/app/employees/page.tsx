@@ -70,6 +70,7 @@ export default function EmployeesPage() {
       ...prev,
       skip: ((newParams.page ?? 1) - 1) * prev.limit,
       limit: newParams.page_size || prev.limit,
+      search: newParams.search || undefined,
     }))
   }
 
@@ -98,6 +99,7 @@ export default function EmployeesPage() {
         onDelete={handleDelete}
         loading={isLoading}
         idField="ansattid"
+        searchPlaceholder="Søk etter navn, e-post eller telefon..."
       />
     </div>
   )
