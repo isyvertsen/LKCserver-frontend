@@ -231,6 +231,23 @@ export interface Employee {
   ssma_timestamp?: string
 }
 
+// Supplier Types
+export interface Leverandor {
+  id: number  // Alias for leverandorid to satisfy CrudItem constraint
+  leverandorid: number
+  leverandornavn: string
+  refkundenummer?: string
+  adresse?: string
+  e_post?: string
+  postnummer?: string
+  poststed?: string
+  telefonnummer?: string
+  bestillingsnr?: string
+  utgatt?: boolean
+  webside?: string
+  ssma_timestamp?: string
+}
+
 // Common Types
 export interface Allergen {
   id: number

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,70 +9,66 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save } from "lucide-react"
-import { useProdukt, useUpdateProdukt } from "@/hooks/useProdukter"
+import { useCreateProdukt } from "@/hooks/useProdukter"
 import { useKategorierList } from "@/hooks/useKategorier"
 import { useLeverandorerList } from "@/hooks/useLeverandorer"
-import { Produkt } from "@/lib/api/produkter"
+import { ProduktCreateData } from "@/lib/api/produkter"
 import { toast } from "sonner"
 
-export default function EditProduktPage() {
+export default function NewProduktPage() {
   const router = useRouter()
-  const params = useParams()
-  const produktId = parseInt(params.id as string)
 
-  const { data: produkt, isLoading } = useProdukt(produktId)
   const { data: kategorierData, isLoading: kategorierLoading } = useKategorierList()
   const { data: leverandorerData, isLoading: leverandorerLoading } = useLeverandorerList()
-  const updateMutation = useUpdateProdukt()
+  const createMutation = useCreateProdukt()
 
   const kategorier = kategorierData?.items || []
   const leverandorer = leverandorerData?.items || []
 
-  const [formData, setFormData] = useState<Partial<Produkt>>({})
-
-  useEffect(() => {
-    if (produkt) {
-      setFormData(produkt)
-    }
-  }, [produkt])
+  const [formData, setFormData] = useState<ProduktCreateData>({
+    produktnavn: "",
+    leverandorsproduktnr: null,
+    antalleht: null,
+    pakningstype: null,
+    pakningsstorrelse: null,
+    pris: null,
+    paknpris: null,
+    levrandorid: null,
+    kategoriid: null,
+    lagermengde: null,
+    bestillingsgrense: null,
+    bestillingsmengde: null,
+    ean_kode: null,
+    utgatt: false,
+    webshop: false,
+    mvaverdi: null,
+    lagerid: null,
+    utregningsfaktor: null,
+    utregnetpris: null,
+    visningsnavn: null,
+    visningsnavn2: null,
+    rett_komponent: false,
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!formData.produktnavn?.trim()) {
+      toast.error("Produktnavn er påkrevd")
+      return
+    }
+
     try {
-      await updateMutation.mutateAsync({
-        id: produktId,
-        data: formData
-      })
-      toast.success("Produkt oppdatert!")
-      router.push("/produkter")
+      const result = await createMutation.mutateAsync(formData)
+      toast.success("Produkt opprettet!")
+      router.push(`/produkter/${result.produktid}`)
     } catch (error) {
-      toast.error("Kunne ikke oppdatere produkt")
+      toast.error("Kunne ikke opprette produkt")
     }
   }
 
-  const handleChange = (field: keyof Produkt, value: any) => {
+  const handleChange = (field: keyof ProduktCreateData, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-8">
-        <div className="max-w-4xl mx-auto">
-          <p>Laster...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!produkt) {
-    return (
-      <div className="container mx-auto py-8">
-        <div className="max-w-4xl mx-auto">
-          <p>Produkt ikke funnet</p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -88,9 +84,9 @@ export default function EditProduktPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Rediger Produkt</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Nytt Produkt</h1>
             <p className="text-muted-foreground">
-              ID: {produktId} - {produkt.produktnavn}
+              Opprett et nytt produkt i katalogen
             </p>
           </div>
         </div>
@@ -101,7 +97,7 @@ export default function EditProduktPage() {
             <CardHeader>
               <CardTitle>Produktinformasjon</CardTitle>
               <CardDescription>
-                Oppdater produktets detaljer
+                Fyll ut informasjon om det nye produktet
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -114,6 +110,7 @@ export default function EditProduktPage() {
                     value={formData.produktnavn || ""}
                     onChange={(e) => handleChange("produktnavn", e.target.value)}
                     required
+                    placeholder="Skriv inn produktnavn"
                   />
                 </div>
 
@@ -162,7 +159,8 @@ export default function EditProduktPage() {
                   <Input
                     id="ean_kode"
                     value={formData.ean_kode || ""}
-                    onChange={(e) => handleChange("ean_kode", e.target.value)}
+                    onChange={(e) => handleChange("ean_kode", e.target.value || null)}
+                    placeholder="8-14 siffer"
                   />
                 </div>
 
@@ -171,7 +169,7 @@ export default function EditProduktPage() {
                   <Input
                     id="leverandorsproduktnr"
                     value={formData.leverandorsproduktnr || ""}
-                    onChange={(e) => handleChange("leverandorsproduktnr", e.target.value)}
+                    onChange={(e) => handleChange("leverandorsproduktnr", e.target.value || null)}
                   />
                 </div>
 
@@ -180,7 +178,8 @@ export default function EditProduktPage() {
                   <Input
                     id="pakningstype"
                     value={formData.pakningstype || ""}
-                    onChange={(e) => handleChange("pakningstype", e.target.value)}
+                    onChange={(e) => handleChange("pakningstype", e.target.value || null)}
+                    placeholder="F.eks. Kartong, Pose"
                   />
                 </div>
 
@@ -189,7 +188,8 @@ export default function EditProduktPage() {
                   <Input
                     id="pakningsstorrelse"
                     value={formData.pakningsstorrelse || ""}
-                    onChange={(e) => handleChange("pakningsstorrelse", e.target.value)}
+                    onChange={(e) => handleChange("pakningsstorrelse", e.target.value || null)}
+                    placeholder="F.eks. 500g, 1L"
                   />
                 </div>
 
@@ -200,7 +200,7 @@ export default function EditProduktPage() {
                     type="number"
                     step="0.01"
                     value={formData.antalleht || ""}
-                    onChange={(e) => handleChange("antalleht", parseFloat(e.target.value) || null)}
+                    onChange={(e) => handleChange("antalleht", e.target.value ? parseFloat(e.target.value) : null)}
                   />
                 </div>
               </div>
@@ -216,7 +216,8 @@ export default function EditProduktPage() {
                       type="number"
                       step="0.01"
                       value={formData.pris || ""}
-                      onChange={(e) => handleChange("pris", parseFloat(e.target.value) || null)}
+                      onChange={(e) => handleChange("pris", e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="0.00"
                     />
                   </div>
 
@@ -227,7 +228,8 @@ export default function EditProduktPage() {
                       type="number"
                       step="0.01"
                       value={formData.paknpris || ""}
-                      onChange={(e) => handleChange("paknpris", parseFloat(e.target.value) || null)}
+                      onChange={(e) => handleChange("paknpris", e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="0.00"
                     />
                   </div>
 
@@ -238,7 +240,8 @@ export default function EditProduktPage() {
                       type="number"
                       step="0.01"
                       value={formData.mvaverdi || ""}
-                      onChange={(e) => handleChange("mvaverdi", parseFloat(e.target.value) || null)}
+                      onChange={(e) => handleChange("mvaverdi", e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="15 eller 25"
                     />
                   </div>
                 </div>
@@ -255,7 +258,8 @@ export default function EditProduktPage() {
                       type="number"
                       step="0.01"
                       value={formData.lagermengde || ""}
-                      onChange={(e) => handleChange("lagermengde", parseFloat(e.target.value) || null)}
+                      onChange={(e) => handleChange("lagermengde", e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="0"
                     />
                   </div>
 
@@ -266,7 +270,8 @@ export default function EditProduktPage() {
                       type="number"
                       step="0.01"
                       value={formData.bestillingsgrense || ""}
-                      onChange={(e) => handleChange("bestillingsgrense", parseFloat(e.target.value) || null)}
+                      onChange={(e) => handleChange("bestillingsgrense", e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="Min. antall før bestilling"
                     />
                   </div>
 
@@ -277,7 +282,8 @@ export default function EditProduktPage() {
                       type="number"
                       step="0.01"
                       value={formData.bestillingsmengde || ""}
-                      onChange={(e) => handleChange("bestillingsmengde", parseFloat(e.target.value) || null)}
+                      onChange={(e) => handleChange("bestillingsmengde", e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="Standard bestillingsmengde"
                     />
                   </div>
                 </div>
@@ -292,7 +298,8 @@ export default function EditProduktPage() {
                     <Input
                       id="visningsnavn"
                       value={formData.visningsnavn || ""}
-                      onChange={(e) => handleChange("visningsnavn", e.target.value)}
+                      onChange={(e) => handleChange("visningsnavn", e.target.value || null)}
+                      placeholder="Visningsnavn for etiketter"
                     />
                   </div>
 
@@ -301,7 +308,8 @@ export default function EditProduktPage() {
                     <Input
                       id="visningsnavn2"
                       value={formData.visningsnavn2 || ""}
-                      onChange={(e) => handleChange("visningsnavn2", e.target.value)}
+                      onChange={(e) => handleChange("visningsnavn2", e.target.value || null)}
+                      placeholder="Alternativt visningsnavn"
                     />
                   </div>
                 </div>
@@ -357,10 +365,10 @@ export default function EditProduktPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={updateMutation.isPending}
+                  disabled={createMutation.isPending}
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  {updateMutation.isPending ? "Lagrer..." : "Lagre endringer"}
+                  {createMutation.isPending ? "Oppretter..." : "Opprett produkt"}
                 </Button>
               </div>
             </CardContent>
