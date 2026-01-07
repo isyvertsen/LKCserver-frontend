@@ -14,7 +14,13 @@ export interface PeriodeWithMenus extends Periode {
   menus: Menu[]
 }
 
-export interface PeriodeListParams extends BaseListParams {}
+export interface PeriodeListParams extends BaseListParams {
+  page?: number
+  page_size?: number
+  search?: string
+  sort_by?: string
+  sort_order?: 'asc' | 'desc'
+}
 
 export type PeriodeListResponse = BaseListResponse<Periode>
 

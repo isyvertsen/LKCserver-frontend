@@ -1,25 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import {
   useKundegrupper,
   useCreateKundegruppe,
   useUpdateKundegruppe,
-  useDeleteKundegruppe
+  useDeleteKundegruppe,
+  useBulkDeleteKundegrupper
 } from "@/hooks/useKundegruppe"
-import { Kundegruppe, KundegruppeCreate } from "@/lib/api/kundegruppe"
+import { Kundegruppe, KundegruppeCreate, KundegruppeListParams } from "@/lib/api/kundegruppe"
+import { DataTable, DataTableColumn } from "@/components/crud/data-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -28,45 +22,87 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, MoreHorizontal, Pencil, Trash2, Check, X, Search } from "lucide-react"
+import { Check, X } from "lucide-react"
+import { CrudListParams } from "@/hooks/useCrud"
+
+const columns: DataTableColumn<Kundegruppe>[] = [
+  {
+    key: "gruppe",
+    label: "Navn",
+    sortable: true,
+  },
+  {
+    key: "webshop",
+    label: "Webshop",
+    sortable: true,
+    render: (value) => value ? (
+      <Badge variant="default" className="bg-green-100 text-green-800">
+        <Check className="mr-1 h-3 w-3" />
+        Ja
+      </Badge>
+    ) : (
+      <Badge variant="secondary">
+        <X className="mr-1 h-3 w-3" />
+        Nei
+      </Badge>
+    ),
+  },
+  {
+    key: "autofaktura",
+    label: "Autofaktura",
+    sortable: true,
+    render: (value) => value ? (
+      <Badge variant="default" className="bg-green-100 text-green-800">
+        <Check className="mr-1 h-3 w-3" />
+        Ja
+      </Badge>
+    ) : (
+      <Badge variant="secondary">
+        <X className="mr-1 h-3 w-3" />
+        Nei
+      </Badge>
+    ),
+  },
+]
 
 export default function KundegrupperPage() {
-  const [searchTerm, setSearchTerm] = useState("")
+  // Query parameters state
+  const [params, setParams] = useState<KundegruppeListParams>({
+    page: 1,
+    page_size: 20,
+  })
+
+  // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingGruppe, setEditingGruppe] = useState<Kundegruppe | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deletingGruppe, setDeletingGruppe] = useState<Kundegruppe | null>(null)
-
-  // Form state
   const [formData, setFormData] = useState<KundegruppeCreate>({
     gruppe: "",
     webshop: false,
     autofaktura: false,
   })
 
-  const { data: kundegrupper, isLoading } = useKundegrupper()
+  // Hooks
+  const { data, isLoading } = useKundegrupper(params)
   const createMutation = useCreateKundegruppe()
   const updateMutation = useUpdateKundegruppe()
   const deleteMutation = useDeleteKundegruppe()
+  const bulkDeleteMutation = useBulkDeleteKundegrupper()
+
+  const kundegrupper = data?.items || []
+  const total = data?.total || 0
+  const page = data?.page || 1
+  const pageSize = data?.page_size || 20
+  const totalPages = data?.total_pages || 1
+
+  const handleParamsChange = useCallback((newParams: CrudListParams) => {
+    setParams(prev => ({
+      ...prev,
+      ...newParams,
+    }))
+  }, [])
 
   const handleCreate = () => {
     setEditingGruppe(null)
@@ -84,9 +120,12 @@ export default function KundegrupperPage() {
     setDialogOpen(true)
   }
 
-  const handleDelete = (gruppe: Kundegruppe) => {
-    setDeletingGruppe(gruppe)
-    setDeleteDialogOpen(true)
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id)
+  }
+
+  const handleBulkDelete = (ids: number[]) => {
+    bulkDeleteMutation.mutate(ids)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -113,18 +152,7 @@ export default function KundegrupperPage() {
     }
   }
 
-  const confirmDelete = () => {
-    if (deletingGruppe) {
-      deleteMutation.mutate(deletingGruppe.gruppeid, {
-        onSuccess: () => {
-          setDeleteDialogOpen(false)
-          setDeletingGruppe(null)
-        },
-      })
-    }
-  }
-
-  if (isLoading) {
+  if (isLoading && kundegrupper.length === 0) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -146,122 +174,42 @@ export default function KundegrupperPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Kundegrupper</h1>
-          <p className="text-muted-foreground">
-            Administrer kundegrupper for segmentering
-          </p>
-        </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Ny kundegruppe
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Kundegrupper</h1>
+        <p className="text-muted-foreground">
+          Administrer kundegrupper for segmentering
+        </p>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Alle kundegrupper</CardTitle>
-              <CardDescription>
-                {kundegrupper?.length || 0} kundegrupper totalt
-              </CardDescription>
-            </div>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Søk etter kundegruppe..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
+          <CardTitle>Alle kundegrupper</CardTitle>
+          <CardDescription>
+            {total} kundegrupper totalt
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Navn</TableHead>
-                <TableHead>Webshop</TableHead>
-                <TableHead>Autofaktura</TableHead>
-                <TableHead className="w-[100px]">Handlinger</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(() => {
-                const filtered = kundegrupper?.filter(g =>
-                  g.gruppe.toLowerCase().includes(searchTerm.toLowerCase())
-                ) || []
-
-                if (filtered.length === 0) {
-                  return (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        {searchTerm ? "Ingen kundegrupper matcher søket." : "Ingen kundegrupper funnet. Opprett en ny kundegruppe for å komme i gang."}
-                      </TableCell>
-                    </TableRow>
-                  )
-                }
-
-                return filtered.map((gruppe) => (
-                  <TableRow key={gruppe.gruppeid}>
-                    <TableCell className="font-medium">{gruppe.gruppe}</TableCell>
-                    <TableCell>
-                      {gruppe.webshop ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          <Check className="mr-1 h-3 w-3" />
-                          Ja
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <X className="mr-1 h-3 w-3" />
-                          Nei
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {gruppe.autofaktura ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          <Check className="mr-1 h-3 w-3" />
-                          Ja
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <X className="mr-1 h-3 w-3" />
-                          Nei
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Åpne meny</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(gruppe)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Rediger
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDelete(gruppe)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Slett
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              })()}
-            </TableBody>
-          </Table>
+          <DataTable
+            tableName="kundegrupper"
+            columns={columns}
+            data={kundegrupper}
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            totalPages={totalPages}
+            onParamsChange={handleParamsChange}
+            onDelete={handleDelete}
+            onBulkDelete={handleBulkDelete}
+            loading={isLoading}
+            idField="gruppeid"
+            searchPlaceholder="Søk etter kundegruppe..."
+            enableEdit={true}
+            enableDelete={true}
+            enableBulkOperations={true}
+            onEdit={handleEdit}
+            onCreate={handleCreate}
+            createButtonLabel="Ny kundegruppe"
+          />
         </CardContent>
       </Card>
 
@@ -334,29 +282,6 @@ export default function KundegrupperPage() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Dette vil slette kundegruppen &quot;{deletingGruppe?.gruppe}&quot;.
-              Kunder i denne gruppen må flyttes til en annen gruppe.
-              Handlingen kan ikke angres.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending ? "Sletter..." : "Slett"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

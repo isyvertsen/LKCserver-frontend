@@ -4,6 +4,7 @@ import { Order, OrderLine } from '@/types/models'
 export interface OrderListParams {
   skip?: number
   limit?: number
+  search?: string
   kunde_id?: number
   fra_dato?: string
   til_dato?: string
@@ -42,9 +43,10 @@ export const ordersApi = {
   // List orders with filters
   list: async (params?: OrderListParams): Promise<OrderListResponse> => {
     const queryParams = new URLSearchParams()
-    
+
     if (params?.skip !== undefined) queryParams.append('skip', params.skip.toString())
     if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString())
+    if (params?.search) queryParams.append('search', params.search)
     if (params?.kunde_id) queryParams.append('kunde_id', params.kunde_id.toString())
     if (params?.fra_dato) queryParams.append('fra_dato', params.fra_dato)
     if (params?.til_dato) queryParams.append('til_dato', params.til_dato)
@@ -53,7 +55,7 @@ export const ordersApi = {
     }
     if (params?.sort_by) queryParams.append('sort_by', params.sort_by)
     if (params?.sort_order) queryParams.append('sort_order', params.sort_order)
-    
+
     const response = await apiClient.get(`/v1/ordrer/?${queryParams}`)
     return response.data
   },
