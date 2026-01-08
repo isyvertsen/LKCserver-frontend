@@ -299,6 +299,19 @@ export default function BestillingSkjemaPage() {
             padding: 0 !important;
           }
 
+          .p-6.space-y-6 > * {
+            margin-top: 0 !important;
+          }
+
+          /* Skjul filter-header eksplisitt */
+          .p-6 > .flex.items-center.justify-between,
+          .p-6 > .flex.gap-4 {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
           /* Kunde-kort */
           .kunde-kort {
             display: block !important;
@@ -312,8 +325,19 @@ export default function BestillingSkjemaPage() {
             box-shadow: none !important;
           }
 
-          .kunde-kort:last-child {
+          .kunde-kort:last-child,
+          .kunde-kort:only-child {
             page-break-after: auto;
+          }
+
+          /* Fjern ekstra spacing på første element */
+          #print-content {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+          }
+
+          #print-content > *:first-child {
+            margin-top: 0 !important;
           }
 
           .kunde-kort * {
@@ -342,10 +366,14 @@ export default function BestillingSkjemaPage() {
             padding: 2px 4px !important;
           }
 
-          /* Perioder */
-          .space-y-8 > *,
-          .space-y-4 > * {
+          /* Perioder - kun inne i kort */
+          .kunde-kort .space-y-4 > * {
             margin-top: 0.3cm !important;
+          }
+
+          /* Fjern spacing mellom kort */
+          #print-content.space-y-8 > * {
+            margin-top: 0 !important;
           }
 
           /* Tekststørrelser */
