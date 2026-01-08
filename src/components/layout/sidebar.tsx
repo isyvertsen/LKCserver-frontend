@@ -30,7 +30,9 @@ import {
   Clock,
   Beaker,
   Activity,
-  TreePine
+  TreePine,
+  ClipboardList,
+  Printer
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -73,7 +75,9 @@ const iconMap: Record<string, any> = {
   Clock,
   Beaker,
   Activity,
-  TreePine
+  TreePine,
+  ClipboardList,
+  Printer
 }
 
 // Reverse map to get icon name from component
@@ -117,6 +121,12 @@ const navigationGroups = [
       { name: "Ordrer", href: "/orders", icon: ShoppingCart },
       { name: "Leveranser", href: "/deliveries", icon: Truck },
       { name: "Etiketter", href: "/labels", icon: Tag },
+    ]
+  },
+  {
+    name: "Utskrifter",
+    items: [
+      { name: "Bestillingsskjema", href: "/bestilling/skjema", icon: ClipboardList },
     ]
   },
   {

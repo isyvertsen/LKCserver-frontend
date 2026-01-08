@@ -28,7 +28,9 @@ import {
   User,
   Database,
   Activity,
-  TreePine
+  TreePine,
+  Printer,
+  ClipboardList
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -95,6 +97,13 @@ const navigationGroups: NavGroup[] = [
       { name: "Ordrer", href: "/orders", icon: ShoppingCart },
       { name: "Leveranser", href: "/deliveries", icon: Truck },
       { name: "Etiketter", href: "/labels", icon: Tag },
+    ]
+  },
+  {
+    name: "Utskrifter",
+    icon: Printer,
+    items: [
+      { name: "Bestillingsskjema", href: "/bestilling/skjema", icon: ClipboardList },
     ]
   },
   {
