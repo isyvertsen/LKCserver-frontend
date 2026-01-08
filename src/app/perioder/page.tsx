@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import {
   usePerioderList,
   useCreatePeriode,
@@ -14,6 +15,8 @@ import { DataTable, DataTableColumn } from "@/components/crud/data-table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CrudListParams } from "@/hooks/useCrud"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { Eye } from "lucide-react"
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return "-"
@@ -51,6 +54,8 @@ const columns: DataTableColumn<Periode>[] = [
 ]
 
 export default function PerioderPage() {
+  const router = useRouter()
+
   // Query parameters state
   const [params, setParams] = useState<PeriodeListParams>({
     page: 1,
@@ -169,13 +174,21 @@ export default function PerioderPage() {
             onBulkDelete={handleBulkDelete}
             loading={isLoading}
             idField="menyperiodeid"
-            searchPlaceholder="Søk etter ukenummer..."
+            searchPlaceholder="Sok etter ukenummer..."
             enableEdit={true}
             enableDelete={true}
             enableBulkOperations={true}
             onEdit={handleEdit}
             onCreate={handleCreate}
             createButtonLabel="Ny periode"
+            customActions={(periode) => (
+              <DropdownMenuItem
+                onClick={() => router.push(`/perioder/${periode.menyperiodeid}/view`)}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Vis struktur
+              </DropdownMenuItem>
+            )}
           />
         </CardContent>
       </Card>

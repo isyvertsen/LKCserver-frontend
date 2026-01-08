@@ -84,9 +84,7 @@ export function useDeleteKundegruppe() {
 export function useBulkDeleteKundegrupper() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (ids: number[]) => {
-      await Promise.all(ids.map(id => kundegruppeApi.delete(id)))
-    },
+    mutationFn: (ids: number[]) => kundegruppeApi.bulkDelete(ids),
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['kundegrupper'] })
       toast({
