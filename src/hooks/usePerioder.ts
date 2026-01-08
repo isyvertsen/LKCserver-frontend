@@ -27,9 +27,7 @@ export function useBulkDeletePerioder() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (ids: number[]) => {
-      await Promise.all(ids.map(id => perioderApi.delete(id)))
-    },
+    mutationFn: (ids: number[]) => perioderApi.bulkDelete(ids),
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['perioder'] })
       toast({

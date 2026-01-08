@@ -78,5 +78,10 @@ export const kundegruppeApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/v1/kunde-gruppe/${id}`)
+  },
+
+  bulkDelete: async (ids: number[]): Promise<{ message: string }> => {
+    const response = await apiClient.post('/v1/kunde-gruppe/bulk-delete', ids)
+    return response.data
   }
 }

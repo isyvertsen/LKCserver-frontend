@@ -28,7 +28,9 @@ import {
   FolderTree,
   Factory,
   Clock,
-  Beaker
+  Beaker,
+  Activity,
+  TreePine
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -69,7 +71,9 @@ const iconMap: Record<string, any> = {
   FolderTree,
   Factory,
   Clock,
-  Beaker
+  Beaker,
+  Activity,
+  TreePine
 }
 
 // Reverse map to get icon name from component
@@ -90,6 +94,7 @@ const navigationGroups = [
     items: [
       { name: "Menyer", href: "/menus", icon: CalendarDays },
       { name: "Perioder", href: "/perioder", icon: Clock },
+      { name: "Periodevisning", href: "/perioder/view", icon: TreePine },
       { name: "Oppskrifter", href: "/recipes", icon: ChefHat },
       { name: "Retter", href: "/dishes", icon: UtensilsCrossed },
     ]
@@ -121,6 +126,7 @@ const navigationGroups = [
       { name: "Brukere", href: "/admin/users", icon: UserCheck },
       { name: "Rapporter", href: "/reports", icon: BarChart3 },
       { name: "Dokumentasjon", href: "/admin/documentation", icon: BookOpen },
+      { name: "Systemstatus", href: "/admin/system", icon: Activity },
       { name: "Innstillinger", href: "/settings", icon: Settings },
     ]
   }

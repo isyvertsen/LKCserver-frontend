@@ -46,5 +46,10 @@ export const perioderApi = {
   async getWithMenus(id: number): Promise<PeriodeWithMenus> {
     const response = await apiClient.get<PeriodeWithMenus>(`/v1/periode/${id}`)
     return response.data
+  },
+
+  async bulkDelete(ids: number[]): Promise<{ message: string }> {
+    const response = await apiClient.post('/v1/periode/bulk-delete', ids)
+    return response.data
   }
 }
