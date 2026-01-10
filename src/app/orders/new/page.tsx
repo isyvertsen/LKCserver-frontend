@@ -18,10 +18,31 @@ export default function NewOrderPage() {
         description: `Ordrenummer ${order.ordreid} er opprettet`,
       })
       router.push(`/orders/${order.ordreid}`)
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Failed to create order:", error)
+
+      // Extract error message from API response
+      let errorMessage = "Kunne ikke opprette ordre"
+
+      if (error.response?.data?.detail) {
+        // FastAPI error format
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail
+        } else if (Array.isArray(error.response.data.detail)) {
+          // Validation errors
+          errorMessage = error.response.data.detail
+            .map((e: any) => `${e.loc?.join('.') || 'Field'}: ${e.msg}`)
+            .join(', ')
+        }
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
       toast({
-        title: "Feil",
-        description: "Kunne ikke opprette ordre",
+        title: "Feil ved opprettelse av ordre",
+        description: errorMessage,
         variant: "destructive",
       })
     }

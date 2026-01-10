@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { reportsApi } from "@/lib/api/reports"
-import { Copy, FileText, Truck, CheckCircle, Clock, Package, PlayCircle } from "lucide-react"
+import { Copy, FileText, Truck, CheckCircle, Clock, Package, PlayCircle, ClipboardList } from "lucide-react"
 
 interface OrderEditPageProps {
   params: Promise<{ id: string }>
@@ -149,6 +149,22 @@ export default function OrderEditPage({ params }: OrderEditPageProps) {
       toast({
         title: "Feil",
         description: "Kunne ikke laste ned leveringsseddel",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDownloadPickList = async () => {
+    try {
+      await reportsApi.downloadPickList(Number(id))
+      toast({
+        title: "Lykkes",
+        description: "Plukkliste lastet ned",
+      })
+    } catch (error) {
+      toast({
+        title: "Feil",
+        description: "Kunne ikke laste ned plukkliste",
         variant: "destructive",
       })
     }
@@ -320,12 +336,20 @@ export default function OrderEditPage({ params }: OrderEditPageProps) {
                 Last ned ordrebekreftelse (PDF)
               </Button>
               <Button
+                onClick={handleDownloadPickList}
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Last ned plukkliste (PDF)
+              </Button>
+              <Button
                 onClick={handleDownloadDeliveryNote}
                 variant="outline"
                 className="w-full justify-start"
               >
                 <Truck className="mr-2 h-4 w-4" />
-                Last ned leveringsseddel (PDF)
+                Last ned pakkseddel (PDF)
               </Button>
             </CardContent>
           </Card>
