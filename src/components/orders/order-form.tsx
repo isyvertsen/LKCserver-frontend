@@ -63,9 +63,12 @@ export function OrderForm({ order, onSubmit, isLoading }: OrderFormProps) {
 
   const handleSubmit = async (data: OrderFormData) => {
     try {
+      console.log("Submitting order with data:", data)
       await onSubmit(data)
     } catch (error) {
       console.error("Failed to submit order:", error)
+      // Re-throw to let parent handle
+      throw error
     }
   }
 

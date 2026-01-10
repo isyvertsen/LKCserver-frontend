@@ -86,4 +86,31 @@ export const reportsApi = {
       throw error
     }
   },
+
+  /**
+   * Download pick list PDF for warehouse
+   *
+   * @param ordreId - Order ID
+   */
+  downloadPickList: async (ordreId: number): Promise<void> => {
+    try {
+      const response = await api.get(
+        `/v1/report-generator/plukkliste/${ordreId}`,
+        { responseType: 'blob' }
+      )
+
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `plukkliste_${ordreId}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to download pick list:', error)
+      throw error
+    }
+  },
 }
