@@ -25,6 +25,7 @@ export interface OrderCreateData {
   kundeid: number
   ordredato?: string
   leveringsdato?: string
+  sendestil?: string
   informasjon?: string
   betalingsmate?: number
   ordrestatusid?: number
